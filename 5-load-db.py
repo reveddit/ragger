@@ -13,6 +13,14 @@ import pandas as pd
 from logger import log
 import sys
 
+from sqlalchemy.schema import DropTable
+from sqlalchemy.ext.compiler import compiles
+
+@compiles(DropTable, "postgresql")
+def _compile_drop_table(element, compiler, **kwargs):
+    return compiler.visit_drop_table(element) + " CASCADE"
+
+
 aggregate_dtype = {
    'subreddit':'category',
    'total_pos_upvotes':'int',
@@ -34,7 +42,7 @@ dtype = {
         'body': 'str',
         'created_utc': 'int',
         'link_id': 'str',
-        'score': 'int'
+        'score': 'object' # this could be int, but when re-aggregating after new monthly dump file is added, some old comments dont exist anymore in the RC_aggregate_all file. there's probably a way to omit these comments, but setting the field to 'nullable' by typing it as object is easier for now
     },
     'posts': {
         'id': 'str',
@@ -76,7 +84,7 @@ class Launcher():
                                 opts['db_pw']+'@localhost:'+
                                 str(opts['db_port'])+'/'+
                                 opts['db_name'])
-        chunksize = 10**5 # Digital Ocean 1 GB ram droplet can handle this
+        chunksize = 10**5 # Digital Ocean 1 GB ram droplet can handle 10**5
         for table, input_file in table_files.items():
             log(time.strftime("%Y-%m-%d %H:%M  ")+table)
             if_exists = 'replace'
@@ -100,7 +108,7 @@ class Launcher():
                 'ALTER TABLE comments ADD PRIMARY KEY (id);'
                 'ALTER TABLE posts ADD PRIMARY KEY (id);'
             )
-        log('finished')
+        log('finished. run 6-create-db-functions.py.  might need to reload hasura meta via api.revddit.com/console')
         ## Not using these two foreign keys b/c aggregate_ tables may not have
         ## corresponding comments/posts entries for data that couldn't
         ## be downloaded from pushshift via the AddFields process.
