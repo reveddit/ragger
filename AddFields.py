@@ -7,8 +7,16 @@ from tqdm import tqdm
 from logger import log
 import sys
 from simplejson.errors import JSONDecodeError
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, Urllib3HttpConnection
 from elasticsearch_dsl import Search
+
+class MyConnection(Urllib3HttpConnection):
+    def __init__(self, *args, **kwargs):
+        extra_headers = kwargs.pop('extra_headers', {})
+        super(MyConnection, self).__init__(*args, **kwargs)
+        self.headers.update(extra_headers)
+
+
 
 postURL = 'https://api.pushshift.io/reddit/submission/search/'
 commentURL = 'https://api.pushshift.io/reddit/comment/search/'
@@ -65,7 +73,12 @@ def ps_api_queryByID(url, ids, fields):
     return results
 
 def ps_es_queryByID(index, ids, fields):
-    es = Elasticsearch([{'host': 'elastic.pushshift.io', 'port': 80}], send_get_body_as='source', timeout=30, max_retries=3)
+    es = Elasticsearch([{'host': 'elastic.pushshift.io', 'port': 80}],
+                       connection_class=MyConnection,
+                       extra_headers = {'Referer': 'https://revddit.com'},
+                       send_get_body_as='source',
+                       timeout=30,
+                       max_retries=3)
     ids_base10 = list(map(toBase10, ids))
     s = Search(using=es, index=index) \
         .filter('terms', _id=ids_base10) \
