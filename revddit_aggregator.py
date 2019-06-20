@@ -13,6 +13,9 @@ def sum_pos(s):
 def count_pos(s):
     return s[s>0].count()
 
+def base36_to_int(val):
+    return int(str(val), 36)
+
 class AggregateMonthly():
     def __init__(self, input_file, output_file, n_rows = 1000, dropna = True):
         self.input_file = input_file
@@ -47,6 +50,12 @@ class AggregateMonthly():
         ##   Ideally, this would be done when writing the file
         ## File causing the issue: RC_2017-09
         df.drop_duplicates(subset='id', keep='last', inplace=True)
+
+        ## Sort input data, don't assume it is already sorted
+        df['id_int'] = df.id.apply(base36_to_int)
+        df.sort_values(['created_utc', 'id_int'], ascending=[True, True], inplace=True)
+        df.drop('id_int', axis=1, inplace=True)
+
         g = df.groupby('subreddit').cumcount() // self.n_rows
         df_agg = (df.groupby(['subreddit', g], sort=False)
                   .agg({'score': [sum_pos,'count'], 'created_utc':'last', 'id':'last'}))
