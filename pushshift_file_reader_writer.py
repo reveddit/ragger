@@ -87,10 +87,14 @@ class PushshiftFileProcessor():
             if x['body'].replace('\\','') == '[removed]' and x['author'].replace('\\','') == '[deleted]':
                 is_removed = True
         else:
-            if 'is_crosspostable' not in x:
-                raise BadSubmissionData('missing key is_crosspostable: '+x['id'])
-            if not x['is_crosspostable'] and x['author'].replace('\\','') != '[deleted]':
-                is_removed = True
+            if x['author'].replace('\\','') != '[deleted]':
+                if 'is_robot_indexable' in x:
+                    if not x['is_robot_indexable']:
+                        is_removed = True
+                elif 'is_crosspostable' not in x:
+                    raise BadSubmissionData('missing key is_crosspostable: '+x['id'])
+                elif not x['is_crosspostable']:
+                    is_removed = True
         ## fix for RC_2017-11 and some RS file
         if x['score'] is None:
             x['score'] = 1
