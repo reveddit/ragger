@@ -14,3 +14,10 @@ class ConfigTyped():
                 elif opts[o].lower() in ['true', 'false']:
                     opts[o] = config.getboolean(g, o)
         self.opts = opts
+
+    def get_connectString_for_user(self, user):
+        return ('postgresql://'+
+                self.opts['db_user']+':'+
+                self.opts['db_pw']+'@localhost:'+
+                str(self.opts['db_port'])+'/'+
+                user)
