@@ -1,5 +1,9 @@
+#!/bin/bash
+
 ARG1=${1:-all} # can be [all, slim, aggM, aggA, addF]
 ARG2=${2:-normal} # can be [normal,test, or whatever appears in config.ini]
+
+logType=processData-$ARG1-$ARG2
 
 slim="python 1-pushshift-slim.py -m $ARG2"
 aggM="python 2-aggregate-monthly.py -m $ARG2"
@@ -19,13 +23,8 @@ elif [ $ARG1 == all ] ; then
     :
 else
     echo "Unknown command: [$ARG1]"
-    exit
+    exit 1
 fi
 
-link="log-$ARG2.txt"
-find . -maxdepth 1 -name $link -type l -exec trash {} \;
-log=logs/log.$(date +"%Y-%m-%d_%H:%M").txt
-echo $command > $log
-ln -s $log $link
-nohup bash -c "$command" >> $log 2>&1 &
-tail -f $log
+logBase="log-$logType"
+./keepLog.sh $logType "$command"
