@@ -5,7 +5,7 @@ command=$2
 dateFormat="+%Y-%m-%d %H:%M:%S"
 logBase="log-$logType"
 link="$logBase.txt"
-find . -maxdepth 1 -name $link -type l -exec trash {} \;
+find . -maxdepth 1 -name $link -type l -exec rm {} \;
 log=logs/log-$logType.$(date +"%Y-%m-%d_%H:%M").txt
 mkdir -p logs
 echo "$(date '+%Y-%m-%d %H:%M:%S') start [$command]" > $log
