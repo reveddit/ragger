@@ -14,13 +14,17 @@ class Launcher():
         engine = create_engine(dbconfig.get_connectString_for_user(dbopts['other_db_name']), pool_pre_ping=True)
         with engine.connect() as con:
             con.execute('COMMIT;')
-            con.execute(
-                f"DROP DATABASE IF EXISTS {dbopts['db_name']};"
+            result = con.execute(
+                f"SELECT 1 FROM pg_database WHERE datname='{dbopts['db_tmp_name']}'"
             )
-            con.execute('COMMIT;')
-            con.execute(
-                f"ALTER DATABASE {dbopts['db_tmp_name']} RENAME TO {dbopts['db_name']};"
-            )
+            if (result.fetchone()):
+                con.execute(
+                    f"DROP DATABASE IF EXISTS {dbopts['db_name']};"
+                )
+                con.execute('COMMIT;')
+                con.execute(
+                    f"ALTER DATABASE {dbopts['db_tmp_name']} RENAME TO {dbopts['db_name']};"
+                )
         engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
         with engine.connect() as con:
             log('6-create-db-functions indices start')
