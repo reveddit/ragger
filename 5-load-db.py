@@ -12,7 +12,7 @@ import pandas as pd
 from logger import log
 import sys
 
-from sqlalchemy.schema import DropTable
+from sqlalchemy.schema import DropTable, CreateSchema
 from sqlalchemy.ext.compiler import compiles
 
 from ConfigTyped import ConfigTyped
@@ -77,27 +77,29 @@ class Launcher():
             sys.exit()
         log('5-load-db')
 
-        engine = create_engine(dbconfig.get_connectString_for_user(dbopts['other_db_name']), pool_pre_ping=True)
-        with engine.connect() as con:
+        other_engine = create_engine(dbconfig.get_connectString_for_user(dbopts['other_db_name']), pool_pre_ping=True)
+        with other_engine.connect() as con:
             con.execute('COMMIT;')
-            con.execute(
-                f"DROP DATABASE IF EXISTS {dbopts['db_tmp_name']};"
+            result = con.execute(
+                f"SELECT 1 FROM pg_database WHERE datname='{dbopts['db_name']}'"
             )
-            con.execute('COMMIT;')
-            con.execute(
-                f"CREATE DATABASE {dbopts['db_tmp_name']};"
-            )
-
+            if (not result.fetchone()):
+                con.execute(
+                    f"CREATE DATABASE {dbopts['db_name']};"
+                )
+        engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
+        if not engine.dialect.has_schema(engine, dbopts['db_schema_tmp']):
+            engine.execute(CreateSchema(dbopts['db_schema_tmp']))
         chunksize = 10**2 # Digital Ocean 1 GB ram droplet can handle 10**5
         for table, input_file in table_files.items():
-            engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_tmp_name']), pool_pre_ping=True)
+            engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
             log(table)
             if_exists = 'replace'
             for chunk in pd.read_csv(input_file,
                                      dtype=dtype[table],
                                      usecols=list(dtype[table].keys()),
                                      chunksize=chunksize):
-                chunk.to_sql(table, engine, if_exists=if_exists, index=False)
+                chunk.to_sql(table, engine, if_exists=if_exists, index=False, schema=dbopts['db_schema_tmp'])
                 if_exists = 'append'
         log('finished. run 6-create-db-functions.py.  might need to reload hasura meta via api.revddit.com/console')
 

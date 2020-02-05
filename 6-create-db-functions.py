@@ -11,19 +11,15 @@ class Launcher():
         dbconfig = ConfigTyped(dbConfigFile, mode)
         dbopts = dbconfig.opts
 
-        engine = create_engine(dbconfig.get_connectString_for_user(dbopts['other_db_name']), pool_pre_ping=True)
-        with engine.connect() as con:
-            con.execute('COMMIT;')
-            result = con.execute(
-                f"SELECT 1 FROM pg_database WHERE datname='{dbopts['db_tmp_name']}'"
-            )
-            if (result.fetchone()):
-                con.execute(
-                    f"DROP DATABASE IF EXISTS {dbopts['db_name']};"
-                )
+        engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
+        if engine.dialect.has_schema(engine, dbopts['db_schema_tmp']):
+            with engine.connect() as con:
                 con.execute('COMMIT;')
                 con.execute(
-                    f"ALTER DATABASE {dbopts['db_tmp_name']} RENAME TO {dbopts['db_name']};"
+                    f"DROP SCHEMA IF EXISTS public CASCADE;"
+                )
+                con.execute(
+                    f"ALTER SCHEMA {dbopts['db_schema_tmp']} RENAME TO public;"
                 )
         engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
         with engine.connect() as con:
@@ -131,6 +127,13 @@ BEGIN
   RETURN query execute format('SELECT * from postRemovedRatesView WHERE subreddit=''%s'' ORDER BY last_created_utc DESC', subreddit);
 END;
 $$ language plpgsql STABLE;
+
+UPDATE pg_language SET lanvalidator = 2247 WHERE lanname = 'c';
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE SCHEMA IF NOT EXISTS hdb_catalog;
+CREATE SCHEMA IF NOT EXISTS hdb_views;
 
 
 """.replace('%','%%'))
