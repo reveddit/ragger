@@ -155,6 +155,8 @@ BEGIN
 END;
 $$ language plpgsql STABLE;
 
+UPDATE pg_language SET lanvalidator = 2247 WHERE lanname = 'c';
+
 """.replace('%','%%'))
         log('finished')
 
