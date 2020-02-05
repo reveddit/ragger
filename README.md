@@ -1,10 +1,40 @@
 # ragger
 Aggregate reddit data in Pushshift monthly files for display on revddit.com
 
-# Usage
+## Basic usage
 
-Download pushshift monthly dumps, store them in the relevant folder specified in `config.ini`, and run `start.sh`
+To process the **test** dataset included in this repo, run `./processData.sh all test`. Results appear in `test/3-aggregate_all` and `test/4-add_fields`.
 
-# Todo
+To process **full** results,
 
-More documentation + add code to create data folders based on the config file settings
+1. Download pushshift monthly dumps
+1. Store them in `data/0-pushshift_raw/` as specified in `config.ini`
+1. Run `./processData.sh all normal`
+
+## With database
+
+To load **test** results into a database, install postgresql locally and run `./test.sh`. The file `dbconfig-example.ini` contains database credentials.
+
+## With remote database using Hasura
+
+1. Set up a Hasura instance on digital ocean following [this guide](https://docs.hasura.io/1.0/graphql/manual/guides/deployment/digital-ocean-one-click.html)
+
+Remotely on the DO droplet,
+
+1. `sudo ufw allow 9090/tcp`
+1. `git clone https://github.com/reveddit/ragger.git`
+1. `cd ragger`
+1. Add the top 4 lines of `droplet-config/pg_hba.conf.head` to `/var/lib/docker/volumes/hasura_db_data/_data/pg_hba.conf`
+1. `sudo cp droplet-config/Caddyfile droplet-config/docker-compose.yaml /etc/hasura/`
+1. Set the droplet's domain name in `/etc/hasura/Caddyfile`
+1. Set admin secret and postgresql password in `/etc/hasura/docker-compose.yaml`
+1. `sudo docker-compose up -d`
+
+Then, locally,
+
+1. In `prod.sh` change `api.revddit.com` to the domain name of the droplet
+1. Run `prod.sh`
+
+Remotely on the DO droplet,
+
+1. Run `./hasuraMetadataApply.sh`
