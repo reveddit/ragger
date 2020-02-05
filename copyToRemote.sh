@@ -1,7 +1,7 @@
 #!/bin/bash
 
 mode=${1:-normal}
-remote=api.revddit.com
+remote=${2:-api.revddit.com}
 remoteRaggerDir=ragger
 aggregate_all_dir=$(python getConfigVar.py -m $mode -v aggregate_all_dir)
 add_fields_dir=$(python getConfigVar.py -m $mode -v add_fields_dir)
