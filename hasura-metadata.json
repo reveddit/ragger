@@ -1,1 +1,78 @@
-{"functions":["getpostupvoteremovedratesbydate","getpostupvoteremovedratesbyrate","getcommentupvoteremovedratesbydate","getcommentupvoteremovedratesbyrate"],"remote_schemas":[],"query_collections":[],"allowlist":[],"tables":[{"table":"commentremovedratesview","object_relationships":[],"array_relationships":[],"insert_permissions":[],"select_permissions":[{"role":"anonymous","comment":null,"permission":{"allow_aggregations":false,"columns":["subreddit","rate","last_created_utc","id_of_max_pos_removed_item","last_id","total_items","body","created_utc","title","score"],"limit":1000,"filter":{}}}],"update_permissions":[],"delete_permissions":[],"event_triggers":[]},{"table":"postremovedratesview","object_relationships":[],"array_relationships":[],"insert_permissions":[],"select_permissions":[{"role":"anonymous","comment":null,"permission":{"allow_aggregations":false,"columns":["subreddit","rate","last_created_utc","id_of_max_pos_removed_item","last_id","total_items","title","num_comments","created_utc","score"],"limit":1000,"filter":{}}}],"update_permissions":[],"delete_permissions":[],"event_triggers":[]}],"query_templates":[]}
+{
+  "functions": [
+    "getpostupvoteremovedratesbydate",
+    "getpostupvoteremovedratesbyrate",
+    "getcommentupvoteremovedratesbydate",
+    "getcommentupvoteremovedratesbyrate"
+  ],
+  "remote_schemas": [],
+  "query_collections": [],
+  "allowlist": [],
+  "tables": [
+    {
+      "table": "commentremovedratesview",
+      "object_relationships": [],
+      "array_relationships": [],
+      "insert_permissions": [],
+      "select_permissions": [
+        {
+          "role": "anonymous",
+          "comment": null,
+          "permission": {
+            "allow_aggregations": false,
+            "columns": [
+              "subreddit",
+              "rate",
+              "last_created_utc",
+              "id_of_max_pos_removed_item",
+              "last_id",
+              "total_items",
+              "body",
+              "created_utc",
+              "title",
+              "score"
+            ],
+            "limit": 1000,
+            "filter": {}
+          }
+        }
+      ],
+      "update_permissions": [],
+      "delete_permissions": [],
+      "event_triggers": []
+    },
+    {
+      "table": "postremovedratesview",
+      "object_relationships": [],
+      "array_relationships": [],
+      "insert_permissions": [],
+      "select_permissions": [
+        {
+          "role": "anonymous",
+          "comment": null,
+          "permission": {
+            "allow_aggregations": false,
+            "columns": [
+              "subreddit",
+              "rate",
+              "last_created_utc",
+              "id_of_max_pos_removed_item",
+              "last_id",
+              "total_items",
+              "title",
+              "num_comments",
+              "created_utc",
+              "score"
+            ],
+            "limit": 1000,
+            "filter": {}
+          }
+        }
+      ],
+      "update_permissions": [],
+      "delete_permissions": [],
+      "event_triggers": []
+    }
+  ],
+  "query_templates": []
+}
