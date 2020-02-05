@@ -16,10 +16,37 @@ class Launcher():
             with engine.connect() as con:
                 con.execute('COMMIT;')
                 con.execute(
-                    f"DROP SCHEMA IF EXISTS public CASCADE;"
+                    f"""
+                        DO $$ DECLARE
+                            r RECORD;
+                        BEGIN
+                            -- if the schema you operate on is not "current", you will want to
+                            -- replace current_schema() in query with 'schematodeletetablesfrom'
+                            -- *and* update the generate 'DROP...' accordingly.
+                            FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
+                                EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+                            END LOOP;
+                        END $$;
+                    """
                 )
                 con.execute(
-                    f"ALTER SCHEMA {dbopts['db_schema_tmp']} RENAME TO public;"
+                    f"""
+                        DO $$ DECLARE
+                            r RECORD;
+                        BEGIN
+                            -- if the schema you operate on is not "current", you will want to
+                            -- replace current_schema() in query with 'schematodeletetablesfrom'
+                            -- *and* update the generate 'DROP...' accordingly.
+                            FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{dbopts['db_schema_tmp']}') LOOP
+                                EXECUTE 'ALTER TABLE {dbopts['db_schema_tmp']}.' || quote_ident(r.tablename) || ' SET SCHEMA public';
+                            END LOOP;
+                        END $$;
+                    """
+                )
+                con.execute(
+                    f"""
+                        DROP SCHEMA {dbopts['db_schema_tmp']} CASCADE;
+                    """
                 )
         engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
         with engine.connect() as con:
@@ -127,14 +154,6 @@ BEGIN
   RETURN query execute format('SELECT * from postRemovedRatesView WHERE subreddit=''%s'' ORDER BY last_created_utc DESC', subreddit);
 END;
 $$ language plpgsql STABLE;
-
-UPDATE pg_language SET lanvalidator = 2247 WHERE lanname = 'c';
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-CREATE SCHEMA IF NOT EXISTS hdb_catalog;
-CREATE SCHEMA IF NOT EXISTS hdb_views;
-
 
 """.replace('%','%%'))
         log('finished')
