@@ -1,0 +1,7 @@
+host all postgres 172.17.0.0/16 md5
+host all postgres 172.18.0.0/16 md5
+host all postgres 0.0.0.0/0 reject
+host all pgdbadm 0.0.0.0/0 md5
+# PostgreSQL Client Authentication Configuration File
+# ===================================================
+

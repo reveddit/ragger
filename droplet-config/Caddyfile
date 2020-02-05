@@ -1,0 +1,9 @@
+api.revddit.com {
+    proxy /q/ 172.17.0.1:9090 {
+        websocket
+        without /q
+    }
+    proxy / graphql-engine:8080 {
+        websocket
+    }
+}
