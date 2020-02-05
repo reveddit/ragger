@@ -7,7 +7,7 @@ baseCommand="python 5-load-db.py -m $mode -d $dbconfig && python 6-create-db-fun
 commandSuffix=""
 
 if [ $mode == 'normal' ] ; then
-  commandSuffix="&& ./hasuraMetadataReload.sh"
+  commandSuffix="&& ./hasuraMetadataApply.sh"
 fi
 
 command="$baseCommand $commandSuffix"
