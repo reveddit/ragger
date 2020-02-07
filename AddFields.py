@@ -9,6 +9,7 @@ import sys
 from simplejson.errors import JSONDecodeError
 from elasticsearch import Elasticsearch, Urllib3HttpConnection
 from elasticsearch_dsl import Search
+import html
 
 class MyConnection(Urllib3HttpConnection):
     def __init__(self, *args, **kwargs):
@@ -95,8 +96,8 @@ def ps_es_queryByID(index, ids, fields):
 def setFieldsForRow(row, hit, fields, ES = False):
     for field in fields:
         val = hit[field]
-        if field == 'body':
-            val = re.sub(r'\s+', ' ', val).strip()[:300]
+        if field == 'body' or field == 'title':
+            val = re.sub(r'\s+', ' ', html.unescape(val)).strip()[:300]
         elif field == 'link_id':
             if not ES:
                 val = val[3:]
