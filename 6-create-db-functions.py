@@ -11,7 +11,7 @@ class Launcher():
         dbconfig = ConfigTyped(dbConfigFile, mode)
         dbopts = dbconfig.opts
 
-        engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
+        engine = create_engine(dbconfig.get_connectString(dbopts['db_name']), pool_pre_ping=True)
         if engine.dialect.has_schema(engine, dbopts['db_schema_tmp']):
             with engine.connect() as con:
                 con.execute('COMMIT;')
@@ -48,7 +48,7 @@ class Launcher():
                         DROP SCHEMA {dbopts['db_schema_tmp']} CASCADE;
                     """
                 )
-        engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
+        engine = create_engine(dbconfig.get_connectString(dbopts['db_name']), pool_pre_ping=True)
         with engine.connect() as con:
             log('6-create-db-functions indices start')
             ## Not using these two foreign keys b/c aggregate_ tables may not have

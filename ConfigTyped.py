@@ -15,9 +15,14 @@ class ConfigTyped():
                     opts[o] = config.getboolean(g, o)
         self.opts = opts
 
-    def get_connectString_for_user(self, user):
+    def get_connectString(self, dbname):
         return ('postgresql://'+
                 self.opts['db_user']+':'+
                 self.opts['db_pw']+'@localhost:'+
                 str(self.opts['db_port'])+'/'+
-                user)
+                dbname)
+
+    def get_connectString_psy(self, dbname):
+        return (f"""
+            host='localhost' dbname='{dbname}' user='{self.opts['db_user']}' password='{self.opts['db_pw']}' port='{str(self.opts['db_port'])}'
+        """)
