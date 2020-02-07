@@ -1,4 +1,5 @@
 import pandas as pd
+import csv
 import re
 from os.path import join, basename, isfile, normpath
 import requests
@@ -121,7 +122,12 @@ class AddFields():
         # Do not redownload data for IDs that already exist
         old_df = []
         if isfile(self.output_file):
-            old_df = pd.read_csv(self.output_file, dtype={'created_utc': object}, index_col='id')
+            old_df = pd.read_csv(
+                self.output_file,
+                dtype={'created_utc': object},
+                index_col='id',
+                na_filter=False #when titles or comments == 'null' or 'na', do not mark them as NaN in pandas
+            )
             # Drop score here b/c it is added later from 3-aggregate_all/ file
             old_df.drop(columns='score', inplace=True, errors='ignore')
             # Make sure extra_fields match in existing data
