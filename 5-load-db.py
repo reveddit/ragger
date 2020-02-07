@@ -8,6 +8,7 @@ import re
 import time
 import shutil
 from sqlalchemy import create_engine
+
 import pandas as pd
 from logger import log
 import sys
@@ -15,43 +16,52 @@ import sys
 from sqlalchemy.schema import DropTable, CreateSchema
 from sqlalchemy.ext.compiler import compiles
 
+import psycopg2
+
 from ConfigTyped import ConfigTyped
 
 @compiles(DropTable, "postgresql")
 def _compile_drop_table(element, compiler, **kwargs):
     return compiler.visit_drop_table(element) + " CASCADE"
 
+reddit_id_column = 'char(15)'
 
-aggregate_dtype = {
-   'subreddit':'category',
-   'total_pos_upvotes':'int',
-   'total_items':'int',
-   'last_created_utc':'int',
-   'last_id':'str',
-   'rate':'float',
-   'num_pos_upvotes_removed':'int',
-   'num_items_with_pos_upvotes_removed':'int',
-   'score_of_max_pos_removed_item':'int',
-   'id_of_max_pos_removed_item':'str'
-}
+aggregate_columns = f"""
 
-dtype = {
-    'aggregate_comments': aggregate_dtype,
-    'aggregate_posts': aggregate_dtype,
-    'comments': {
-        'id': 'str',
-        'body': 'str',
-        'created_utc': 'int',
-        'link_id': 'str',
-        'score': 'object' # this could be int, but when re-aggregating after new monthly dump file is added, some old comments dont exist anymore in the RC_aggregate_all file. there's probably a way to omit these comments, but setting the field to 'nullable' by typing it as object is easier for now
-    },
-    'posts': {
-        'id': 'str',
-        'created_utc': 'int',
-        'num_comments': 'int',
-        'title': 'str',
-        'score': 'object'
-    }
+    subreddit char(30) NOT NULL,
+    total_pos_upvotes bigint NOT NULL,
+    total_items bigint NOT NULL,
+    last_created_utc bigint NOT NULL,
+    last_id {reddit_id_column} NOT NULL,
+    rate double precision NOT NULL,
+    num_pos_upvotes_removed bigint NOT NULL,
+    num_items_with_pos_upvotes_removed bigint NOT NULL,
+    score_of_max_pos_removed_item bigint NOT NULL,
+    id_of_max_pos_removed_item {reddit_id_column} NOT NULL
+
+"""
+
+# [comments|posts].score could be non-nullable, but when re-aggregating
+# after new monthly dump file is added, some old items dont exist anymore
+# in the R*_aggregate_all file. There is probably a way to omit these items,
+# but setting it to be nullable is easier for now
+columns = {
+    'aggregate_comments': aggregate_columns,
+    'aggregate_posts': aggregate_columns,
+    'comments': f"""
+        id {reddit_id_column} NOT NULL,
+        body char(300),
+        created_utc bigint NOT NULL,
+        link_id {reddit_id_column} NOT NULL,
+        score bigint
+    """,
+    'posts': f"""
+        id {reddit_id_column} NOT NULL,
+        created_utc bigint NOT NULL,
+        num_comments bigint NOT NULL,
+        title char(300),
+        score bigint
+    """
 }
 
 class Launcher():
@@ -77,7 +87,7 @@ class Launcher():
             sys.exit()
         log('5-load-db')
 
-        other_engine = create_engine(dbconfig.get_connectString_for_user(dbopts['other_db_name']), pool_pre_ping=True)
+        other_engine = create_engine(dbconfig.get_connectString(dbopts['other_db_name']), pool_pre_ping=True)
         with other_engine.connect() as con:
             con.execute('COMMIT;')
             result = con.execute(
@@ -87,21 +97,38 @@ class Launcher():
                 con.execute(
                     f"CREATE DATABASE {dbopts['db_name']};"
                 )
-        engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
+        engine = create_engine(dbconfig.get_connectString(dbopts['db_name']), pool_pre_ping=True)
         if not engine.dialect.has_schema(engine, dbopts['db_schema_tmp']):
             engine.execute(CreateSchema(dbopts['db_schema_tmp']))
-        chunksize = 10**2 # Digital Ocean 1 GB ram droplet can handle 10**5
+        else:
+            with engine.connect() as con:
+                con.execute(
+                    f"""
+                        DROP SCHEMA {dbopts['db_schema_tmp']} CASCADE;
+                    """
+                )
+            engine.execute(CreateSchema(dbopts['db_schema_tmp']))
         for table, input_file in table_files.items():
-            engine = create_engine(dbconfig.get_connectString_for_user(dbopts['db_name']), pool_pre_ping=True)
             log(table)
-            if_exists = 'replace'
-            for chunk in pd.read_csv(input_file,
-                                     dtype=dtype[table],
-                                     usecols=list(dtype[table].keys()),
-                                     chunksize=chunksize):
-                chunk.to_sql(table, engine, if_exists=if_exists, index=False, schema=dbopts['db_schema_tmp'])
-                if_exists = 'append'
-        log('finished. run 6-create-db-functions.py.  might need to reload hasura meta via api.revddit.com/console')
+            conn = psycopg2.connect(dbconfig.get_connectString_psy(dbopts['db_name']))
+            cur = conn.cursor()
+            cur.execute(
+                f"""
+                    CREATE TABLE {dbopts['db_schema_tmp']}.{table} ({columns[table]});
+                """
+            )
+            conn.commit()
+            with open(input_file, 'r') as f:
+                next(f) # Skip the header row
+                cur.copy_expert(
+                    f"""
+                        COPY {dbopts['db_schema_tmp']}.{table} FROM STDIN WITH CSV
+                    """, f
+                )
+                conn.commit()
+            cur.close()
+            conn.close()
+        log('5-load-db finished.')
 
 
 
