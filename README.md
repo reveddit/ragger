@@ -40,7 +40,4 @@ Then, locally,
 
 1. In `prod.sh` change `api.revddit.com` to the domain name of the droplet
 1. Run `prod.sh`
-
-Remotely on the DO droplet,
-
-1. Run `./hasuraMetadataApply.sh`
+1. Check the local and remote logs to know when it's done
