@@ -13,17 +13,23 @@ To process **full** results,
 
 ## With database
 
-To load **test** results into a database, install postgresql locally and run `./test.sh`. The file `dbconfig-example.ini` contains database credentials.
+Install postgresql locally. The file `dbconfig-example.ini` contains database credentials.
+
+* `./test.sh` loads **test** results into the database.
+* `./test.sh normal` loads **full** results into the database.
 
 ## With remote database using Hasura
 
 1. Set up a Hasura instance on digital ocean following [this guide](https://docs.hasura.io/1.0/graphql/manual/guides/deployment/digital-ocean-one-click.html)
+1. Set up postgresql database credentials
+1. Set up ssh keys
 
 Remotely on the DO droplet,
 
 1. `sudo ufw allow 9090/tcp`
 1. `git clone https://github.com/reveddit/ragger.git`
 1. `cd ragger`
+1. `cp dbconfig-example.ini dbconfig.ini` and set database credentials in the new file
 1. Add the top 4 lines of `droplet-config/pg_hba.conf.head` to `/var/lib/docker/volumes/hasura_db_data/_data/pg_hba.conf`
 1. `sudo cp droplet-config/Caddyfile droplet-config/docker-compose.yaml /etc/hasura/`
 1. Set the droplet's domain name in `/etc/hasura/Caddyfile`
