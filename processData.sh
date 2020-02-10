@@ -1,30 +1,31 @@
 #!/bin/bash
 
-ARG1=${1:-all} # can be [all, slim, aggM, aggA, addF]
-ARG2=${2:-normal} # can be [normal,test, or whatever appears in config.ini]
+script=${1:-all} # can be [all, slim, aggM, aggA, addF]
+mode=${2:-normal} # can be [normal,test, or whatever appears in config.ini]
+waitUntilCommandFinishes=${3:-no}
 
-logType=processData-$ARG1-$ARG2
+logType=processData-$script-$mode
 
-slim="python 1-pushshift-slim.py -m $ARG2"
-aggM="python 2-aggregate-monthly.py -m $ARG2"
-aggA="python 3-aggregate-all.py -m $ARG2"
-addF="python 4-add-fields.py -m $ARG2"
+slim="python 1-pushshift-slim.py -m $mode"
+aggM="python 2-aggregate-monthly.py -m $mode"
+aggA="python 3-aggregate-all.py -m $mode"
+addF="python 4-add-fields.py -m $mode"
 command="$slim; $aggM; $aggA; $addF"
 
-if [ $ARG1 == slim ] ; then
+if [ $script == slim ] ; then
     command=$slim
-elif [ $ARG1 == aggM ] ; then
+elif [ $script == aggM ] ; then
     command=$aggM
-elif [ $ARG1 == aggA ] ; then
+elif [ $script == aggA ] ; then
     command=$aggA
-elif [ $ARG1 == addF ] ; then
+elif [ $script == addF ] ; then
     command=$addF
-elif [ $ARG1 == all ] ; then
+elif [ $script == all ] ; then
     :
 else
-    echo "Unknown command: [$ARG1]"
+    echo "Unknown command: [$script]"
     exit 1
 fi
 
 logBase="log-$logType"
-./keepLog.sh $logType "$command"
+./keepLog.sh $logType "$command" $waitUntilCommandFinishes

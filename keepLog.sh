@@ -2,7 +2,11 @@
 
 logType=$1
 command=$2
-dateFormat="+%Y-%m-%d %H:%M:%S"
+waitUntilCommandFinishes=${3:-no}
+date="%Y-%m-%d"
+time="%H:%M:%S"
+dateFormat="+$date $time"
+dateFormatNoSpace="+${date}_${time}"
 logBase="log-$logType"
 logsRootDir=logs
 logDir=$logsRootDir/$logType
@@ -11,10 +15,18 @@ linkName="$logBase.txt"
 link="$logsRootDir/$linkName"
 find $logsRootDir -name $linkName -type l -exec rm {} \;
 
-logFileName=log-$logType.$(date +"%Y-%m-%d_%H:%M:%S").txt
+logFileName=log-$logType.$(date "$dateFormatNoSpace").txt
 logFile=$logDir/$logFileName
 logDirRelativeToLink=$logType
-echo "tail -f $link"
-echo "$(date '+%Y-%m-%d %H:%M:%S') start [$command]" > $logFile
+now="$(date "$dateFormat")"
+echo "$now tail -f $link"
+echo "$now start [$command]" > $logFile
 ln -s $logDirRelativeToLink/$logFileName $link
-nohup bash -c "$command && eval 'date \"$dateFormat\"' | tr '\n' ' ' && echo $logType finished" >> $logFile 2>&1 &
+
+commandWithDate="$command && eval 'date \"$dateFormat\"' | tr '\n' ' ' && echo $logType finished"
+
+if [ "$waitUntilCommandFinishes" == 'no' ] ; then
+  nohup bash -c "$commandWithDate" >> $logFile 2>&1 &
+else
+  bash -c "$commandWithDate" >> $logFile 2>&1
+fi

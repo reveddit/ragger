@@ -1,9 +1,9 @@
 #!/bin/bash
 
-mode=test
-dbconfig=${1:-dbconfig-example.ini}
+mode=${1:-test}
+dbconfig=${2:-dbconfig-example.ini}
 
-command="./processData.sh all $mode && ./loadDB.sh $mode $dbconfig"
+command="./processData.sh all $mode yes && ./loadDB.sh $mode $dbconfig"
 
-logType=test
+logType=test-$mode
 ./keepLog.sh $logType "$command"
