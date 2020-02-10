@@ -64,19 +64,22 @@ class Launcher():
             ## Similarly, b/c PS queries fail to download some posts data, this constraint isn't possible to include,
 
             # 'ALTER TABLE comments ADD CONSTRAINT fk_post_id FOREIGN KEY (link_id) REFERENCES posts (id);'
-            con.execute(
-                'CREATE INDEX ix_subreddit_c ON aggregate_comments USING btree (subreddit);'
-                'CREATE INDEX ix_subreddit_p ON aggregate_posts USING btree (subreddit);'
+            try:
+                con.execute(
+                    'CREATE INDEX ix_subreddit_c ON aggregate_comments USING btree (subreddit);'
+                    'CREATE INDEX ix_subreddit_p ON aggregate_posts USING btree (subreddit);'
 
-                'CREATE INDEX ix_utc_desc_c ON aggregate_comments USING btree (last_created_utc DESC NULLS LAST);'
-                'CREATE INDEX ix_utc_desc_p ON aggregate_posts USING btree (last_created_utc DESC NULLS LAST);'
+                    'CREATE INDEX ix_utc_desc_c ON aggregate_comments USING btree (last_created_utc DESC NULLS LAST);'
+                    'CREATE INDEX ix_utc_desc_p ON aggregate_posts USING btree (last_created_utc DESC NULLS LAST);'
 
-                'CREATE INDEX ix_rate_desc_c ON aggregate_comments USING btree (rate DESC NULLS LAST);'
-                'CREATE INDEX ix_rate_desc_p ON aggregate_posts USING btree (rate DESC NULLS LAST);'
+                    'CREATE INDEX ix_rate_desc_c ON aggregate_comments USING btree (rate DESC NULLS LAST);'
+                    'CREATE INDEX ix_rate_desc_p ON aggregate_posts USING btree (rate DESC NULLS LAST);'
 
-                'ALTER TABLE comments ADD PRIMARY KEY (id);'
-                'ALTER TABLE posts ADD PRIMARY KEY (id);'
-            )
+                    'ALTER TABLE comments ADD PRIMARY KEY (id);'
+                    'ALTER TABLE posts ADD PRIMARY KEY (id);'
+                )
+            except:
+                log('ERROR: Index creation failed (it may already exist)')
             log('6-create-db-functions functions start')
             con.execute("""
 DROP FUNCTION IF EXISTS getCommentUpvoteRemovedRatesByRate;
@@ -84,15 +87,15 @@ DROP FUNCTION IF EXISTS getCommentUpvoteRemovedRatesByDate;
 DROP VIEW IF EXISTS commentRemovedRatesView;
 
 CREATE OR REPLACE view commentRemovedRatesView AS
-SELECT    subreddit,
+SELECT    TRIM(subreddit) as subreddit,
           rate,
           last_created_utc,
-          id_of_max_pos_removed_item,
-          last_id,
+          TRIM(id_of_max_pos_removed_item) as id_of_max_pos_removed_item,
+          TRIM(last_id),
           total_items,
-          comments.body,
+          TRIM(comments.body) as body,
           comments.created_utc,
-          posts.title,
+          TRIM(posts.title) as title,
           score_of_max_pos_removed_item AS score
 FROM      aggregate_comments
 LEFT JOIN comments
@@ -123,13 +126,13 @@ DROP FUNCTION IF EXISTS getPostUpvoteRemovedRatesByDate;
 DROP VIEW IF EXISTS postRemovedRatesView;
 
 CREATE OR REPLACE view postRemovedRatesView AS
-SELECT    subreddit,
+SELECT    TRIM(subreddit) as subreddit,
           rate,
           last_created_utc,
-          id_of_max_pos_removed_item,
-          last_id,
+          TRIM(id_of_max_pos_removed_item) as id_of_max_pos_removed_item,
+          TRIM(last_id) as last_id,
           total_items,
-          posts.title,
+          TRIM(posts.title) as title,
           posts.num_comments,
           posts.created_utc,
           score_of_max_pos_removed_item AS score
