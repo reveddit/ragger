@@ -2,7 +2,7 @@
 
 mode=normal
 dbconfig=dbconfig.ini
-remote=api.revddit.com
+remote=ssh.rviewit.com
 
 command="./processData.sh all $mode yes && ./copyToRemote.sh $mode $remote yes && ssh $remote 'cd ragger && ./loadDB.sh $mode $dbconfig'"
 

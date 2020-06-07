@@ -38,6 +38,6 @@ Remotely on the DO droplet,
 
 Then, locally,
 
-1. In `prod.sh` change `api.revddit.com` to the domain name of the droplet
+1. In `prod.sh` change `ssh.rviewit.com` to the domain name of the droplet
 1. Run `prod.sh`
 1. Check the local and remote logs to know when it's done

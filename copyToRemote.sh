@@ -1,7 +1,7 @@
 #!/bin/bash
 
 mode=${1:-normal}
-remote=${2:-api.revddit.com}
+remote=${2:-ssh.rviewit.com}
 waitUntilCommandFinishes=${3:-no}
 
 remoteRaggerDir=ragger
