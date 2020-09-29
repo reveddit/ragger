@@ -30,7 +30,7 @@ class Launcher():
             type = 'comments'
             if basename[1].lower() == 's':
                 type = 'posts'
-            if extension in ['.xz', '.zst', '.bz2']:
+            if extension in ['.gz', '.xz', '.zst', '.bz2']:
                 output_file = join(opts['pushshift_slim_dir'], basename+'.csv')
                 if (not isfile(output_file)) or opts['force']:
                     log(basename)

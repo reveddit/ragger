@@ -1,3 +1,4 @@
+import gzip
 from bz2 import BZ2File
 import lzma
 import zstandard as zstd
@@ -31,10 +32,13 @@ class PushshiftFileProcessor():
         extension = os.path.splitext(self.input_file)[1]
         if extension == '.bz2':
             with BZ2File(self.input_file) as infile:
-                self.transform_xz_bz_file(infile)
-        if extension == '.xz':
+                self.transform_xz_bz_gz_file(infile)
+        elif extension == '.xz':
             with lzma.open(self.input_file, 'r') as infile:
-                self.transform_xz_bz_file(infile)
+                self.transform_xz_bz_gz_file(infile)
+        elif extension == '.gz':
+            with gzip.open(self.input_file, 'r') as infile:
+                self.transform_xz_bz_gz_file(infile)
         elif extension == '.zst':
             with open(self.input_file, 'rb') as infile:
                 self.transform_zst_file(infile)
@@ -46,11 +50,11 @@ class PushshiftFileProcessor():
             for item in self.data:
                 f.write(','.join(map(str,item))+"\n")
 
-    def transform_xz_bz_file(self, infile):
+    def transform_xz_bz_gz_file(self, infile):
         # 44m24s run time for 104,473,929 comments stored on HD [RC_2018-09.xz, 10GB]
-        xz_bz2_num_lines = 10000
+        num_lines_per_read = 10000
         lines_read = 0
-        for i,lines in enumerate(grouper(infile, xz_bz2_num_lines, '')):
+        for i,lines in enumerate(grouper(infile, num_lines_per_read, '')):
             for line in lines:
                 if line.strip():
                     self.appendData(line, self.type)
