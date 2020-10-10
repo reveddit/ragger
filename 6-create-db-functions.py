@@ -3,8 +3,103 @@ import configparser
 from sqlalchemy import create_engine
 from logger import log
 import sys
+import re
 
 from ConfigTyped import ConfigTyped
+
+indexes = [
+    'CREATE INDEX ix_subreddit_c ON aggregate_comments USING btree (subreddit);',
+    'CREATE INDEX ix_subreddit_p ON aggregate_posts USING btree (subreddit);',
+    'CREATE INDEX ix_utc_desc_c ON aggregate_comments USING btree (last_created_utc DESC NULLS LAST);',
+    'CREATE INDEX ix_utc_desc_p ON aggregate_posts USING btree (last_created_utc DESC NULLS LAST);',
+    'CREATE INDEX ix_rate_desc_c ON aggregate_comments USING btree (rate DESC NULLS LAST);',
+    'CREATE INDEX ix_rate_desc_p ON aggregate_posts USING btree (rate DESC NULLS LAST);',
+    'ALTER TABLE comments ADD PRIMARY KEY (id);',
+    'ALTER TABLE posts ADD PRIMARY KEY (id);',
+    'ALTER TABLE aggregate_comments ADD PRIMARY KEY (last_id);',
+    'ALTER TABLE aggregate_posts ADD PRIMARY KEY (last_id);',
+]
+
+TEXT = 'TEXT'
+DOUBLE = 'DOUBLE PRECISION'
+BIGINT = 'BIGINT'
+
+commentColumns = [
+    ['subreddit', TEXT],
+    ['rate', DOUBLE],
+    ['last_created_utc', BIGINT],
+    ['id_of_max_pos_removed_item', TEXT],
+    ['last_id', TEXT],
+    ['total_items', BIGINT],
+    ['comments.body', TEXT],
+    ['comments.created_utc', BIGINT],
+    ['posts.title', TEXT],
+    ['score_of_max_pos_removed_item', BIGINT],
+]
+
+postColumns = [
+    ['subreddit', TEXT],
+    ['rate', DOUBLE],
+    ['last_created_utc', BIGINT],
+    ['id_of_max_pos_removed_item', TEXT],
+    ['last_id', TEXT],
+    ['total_items', BIGINT],
+    ['posts.title', TEXT],
+    ['posts.num_comments', BIGINT],
+    ['posts.created_utc', BIGINT],
+    ['score_of_max_pos_removed_item', BIGINT],
+]
+
+def generateSQL(columns):
+    columnsReturnTypes = ''
+    columnsSelectSQL = ''
+    for i, c in enumerate(columns):
+        return_name = re.sub(r'.*\.', '', c[0])
+        if c[0] == 'score_of_max_pos_removed_item':
+            return_name = 'score'
+            columnsSelectSQL += f'{c[0]} AS {return_name}'
+        elif c[1] == TEXT:
+            columnsSelectSQL += f'TRIM({c[0]}) AS '+ return_name
+        else:
+            columnsSelectSQL += f'{c[0]}'
+        columnsReturnTypes += return_name + ' ' + c[1]
+        if i < len(columns)-1:
+            columnsReturnTypes += ",\n"
+            columnsSelectSQL += ",\n"
+    return columnsReturnTypes, columnsSelectSQL
+
+commentColumnsReturnTypes, commentColumnsSelectSQL = generateSQL(commentColumns)
+postColumnsReturnTypes, postColumnsSelectSQL = generateSQL(postColumns)
+
+commentFromJoinSQL = """
+FROM      aggregate_comments
+LEFT JOIN comments
+ON        aggregate_comments.id_of_max_pos_removed_item = comments.id
+LEFT JOIN posts
+ON        comments.link_id = posts.id
+"""
+
+commentFromJoinWhereSQL = f"""
+{commentFromJoinSQL}
+WHERE last_id IN
+  (SELECT    last_id
+      {commentFromJoinSQL}
+      WHERE subreddit=$1
+"""
+
+postFromJoinSQL = """
+FROM      aggregate_posts
+LEFT JOIN posts
+ON        aggregate_posts.id_of_max_pos_removed_item = posts.id
+"""
+
+postFromJoinWhereSQL = f"""
+{postFromJoinSQL}
+WHERE last_id IN
+    (SELECT last_id
+    {postFromJoinSQL}
+    WHERE subreddit=$1
+"""
 
 class Launcher():
     def __init__(self, dbConfigFile, mode='normal'):
@@ -64,97 +159,77 @@ class Launcher():
             ## Similarly, b/c PS queries fail to download some posts data, this constraint isn't possible to include,
 
             # 'ALTER TABLE comments ADD CONSTRAINT fk_post_id FOREIGN KEY (link_id) REFERENCES posts (id);'
-            try:
-                con.execute(
-                    'CREATE INDEX ix_subreddit_c ON aggregate_comments USING btree (subreddit);'
-                    'CREATE INDEX ix_subreddit_p ON aggregate_posts USING btree (subreddit);'
-
-                    'CREATE INDEX ix_utc_desc_c ON aggregate_comments USING btree (last_created_utc DESC NULLS LAST);'
-                    'CREATE INDEX ix_utc_desc_p ON aggregate_posts USING btree (last_created_utc DESC NULLS LAST);'
-
-                    'CREATE INDEX ix_rate_desc_c ON aggregate_comments USING btree (rate DESC NULLS LAST);'
-                    'CREATE INDEX ix_rate_desc_p ON aggregate_posts USING btree (rate DESC NULLS LAST);'
-
-                    'ALTER TABLE comments ADD PRIMARY KEY (id);'
-                    'ALTER TABLE posts ADD PRIMARY KEY (id);'
-                )
-            except:
-                log('ERROR: Index creation failed (it may already exist)')
+            for index in indexes:
+                try:
+                    con.execute(index)
+                    log('Successful: '+index)
+                except:
+                    pass
+                    #log('WARNING: Index creation failed (it may already exist)')
+                    #log('         '+index)
             log('6-create-db-functions functions start')
-            con.execute("""
+            con.execute(f"""
 DROP FUNCTION IF EXISTS getCommentUpvoteRemovedRatesByRate;
 DROP FUNCTION IF EXISTS getCommentUpvoteRemovedRatesByDate;
-DROP VIEW IF EXISTS commentRemovedRatesView;
 
-CREATE OR REPLACE view commentRemovedRatesView AS
-SELECT    TRIM(subreddit) as subreddit,
-          rate,
-          last_created_utc,
-          TRIM(id_of_max_pos_removed_item) as id_of_max_pos_removed_item,
-          TRIM(last_id) as last_id,
-          total_items,
-          TRIM(comments.body) as body,
-          comments.created_utc,
-          TRIM(posts.title) as title,
-          score_of_max_pos_removed_item AS score
-FROM      aggregate_comments
-LEFT JOIN comments
-ON        aggregate_comments.id_of_max_pos_removed_item = comments.id
-LEFT JOIN posts
-ON        comments.link_id = posts.id;
+DROP TYPE IF EXISTS commentColumnsReturnTypes;
+CREATE TYPE commentColumnsReturnTypes AS ( {commentColumnsReturnTypes} );
 
 CREATE OR REPLACE function
-  getCommentUpvoteRemovedRatesByRate(subreddit VARCHAR(40)) RETURNS SETOF commentRemovedRatesView
+  getCommentUpvoteRemovedRatesByRate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF commentColumnsReturnTypes
 AS
 $$
 BEGIN
-  RETURN query execute format('SELECT * from commentRemovedRatesView WHERE subreddit=''%s'' ORDER BY rate DESC', subreddit);
+  RETURN query execute 'SELECT {commentColumnsSelectSQL}
+    {commentFromJoinWhereSQL}
+        ORDER BY rate DESC LIMIT $2)
+    ORDER BY rate DESC'
+  USING subreddit, num_records;
 END;
 $$ language plpgsql STABLE;
 
 CREATE OR REPLACE function
-  getCommentUpvoteRemovedRatesByDate(subreddit VARCHAR(40)) RETURNS SETOF commentRemovedRatesView
+  getCommentUpvoteRemovedRatesByDate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF commentColumnsReturnTypes
 AS
 $$
 BEGIN
-  RETURN query execute format('SELECT * from commentRemovedRatesView WHERE subreddit=''%s'' ORDER BY last_created_utc DESC', subreddit);
+  RETURN query execute 'SELECT {commentColumnsSelectSQL}
+    {commentFromJoinWhereSQL}
+        ORDER BY last_created_utc DESC LIMIT $2)
+    ORDER BY last_created_utc DESC'
+  USING subreddit, num_records;
 END;
 $$ language plpgsql STABLE;
 
 DROP FUNCTION IF EXISTS getPostUpvoteRemovedRatesByRate;
 DROP FUNCTION IF EXISTS getPostUpvoteRemovedRatesByDate;
-DROP VIEW IF EXISTS postRemovedRatesView;
 
-CREATE OR REPLACE view postRemovedRatesView AS
-SELECT    TRIM(subreddit) as subreddit,
-          rate,
-          last_created_utc,
-          TRIM(id_of_max_pos_removed_item) as id_of_max_pos_removed_item,
-          TRIM(last_id) as last_id,
-          total_items,
-          TRIM(posts.title) as title,
-          posts.num_comments,
-          posts.created_utc,
-          score_of_max_pos_removed_item AS score
-FROM      aggregate_posts
-LEFT JOIN posts
-ON        aggregate_posts.id_of_max_pos_removed_item = posts.id;
+DROP TYPE IF EXISTS postColumnsReturnTypes;
+CREATE TYPE postColumnsReturnTypes AS ( {postColumnsReturnTypes} );
 
 CREATE OR REPLACE function
-  getPostUpvoteRemovedRatesByRate(subreddit VARCHAR(40)) RETURNS SETOF postRemovedRatesView
+  getPostUpvoteRemovedRatesByRate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF postColumnsReturnTypes
 AS
 $$
 BEGIN
-  RETURN query execute format('SELECT * from postRemovedRatesView WHERE subreddit=''%s'' ORDER BY rate DESC', subreddit);
+  RETURN query execute 'SELECT {postColumnsSelectSQL}
+    {postFromJoinWhereSQL}
+        ORDER BY rate DESC LIMIT $2)
+    ORDER BY rate DESC'
+  USING subreddit, num_records;
 END;
 $$ language plpgsql STABLE;
 
 CREATE OR REPLACE function
-  getPostUpvoteRemovedRatesByDate(subreddit VARCHAR(40)) RETURNS SETOF postRemovedRatesView
+  getPostUpvoteRemovedRatesByDate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF postColumnsReturnTypes
 AS
 $$
 BEGIN
-  RETURN query execute format('SELECT * from postRemovedRatesView WHERE subreddit=''%s'' ORDER BY last_created_utc DESC', subreddit);
+  RETURN query execute 'SELECT {postColumnsSelectSQL}
+    {postFromJoinWhereSQL}
+        ORDER BY last_created_utc DESC LIMIT $2)
+    ORDER BY last_created_utc DESC'
+  USING subreddit, num_records;
 END;
 $$ language plpgsql STABLE;
 
