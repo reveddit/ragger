@@ -172,8 +172,8 @@ class Launcher():
 DROP FUNCTION IF EXISTS getCommentUpvoteRemovedRatesByRate;
 DROP FUNCTION IF EXISTS getCommentUpvoteRemovedRatesByDate;
 
-DROP TYPE IF EXISTS commentColumnsReturnTypes;
-CREATE TYPE commentColumnsReturnTypes AS ( {commentColumnsReturnTypes} );
+DROP TABLE IF EXISTS commentColumnsReturnTypes;
+CREATE TABLE commentColumnsReturnTypes ( {commentColumnsReturnTypes} );
 
 CREATE OR REPLACE function
   getCommentUpvoteRemovedRatesByRate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF commentColumnsReturnTypes
@@ -204,8 +204,8 @@ $$ language plpgsql STABLE;
 DROP FUNCTION IF EXISTS getPostUpvoteRemovedRatesByRate;
 DROP FUNCTION IF EXISTS getPostUpvoteRemovedRatesByDate;
 
-DROP TYPE IF EXISTS postColumnsReturnTypes;
-CREATE TYPE postColumnsReturnTypes AS ( {postColumnsReturnTypes} );
+DROP TABLE IF EXISTS postColumnsReturnTypes;
+CREATE TABLE postColumnsReturnTypes ( {postColumnsReturnTypes} );
 
 CREATE OR REPLACE function
   getPostUpvoteRemovedRatesByRate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF postColumnsReturnTypes

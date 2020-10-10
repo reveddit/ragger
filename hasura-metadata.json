@@ -1,25 +1,15 @@
 {
-  "functions": [
-    "getpostupvoteremovedratesbydate",
-    "getpostupvoteremovedratesbyrate",
-    "getcommentupvoteremovedratesbydate",
-    "getcommentupvoteremovedratesbyrate"
-  ],
-  "remote_schemas": [],
-  "query_collections": [],
-  "allowlist": [],
+  "version": 2,
   "tables": [
     {
-      "table": "commentremovedratesview",
-      "object_relationships": [],
-      "array_relationships": [],
-      "insert_permissions": [],
+      "table": {
+        "schema": "public",
+        "name": "commentcolumnsreturntypes"
+      },
       "select_permissions": [
         {
           "role": "anonymous",
-          "comment": null,
           "permission": {
-            "allow_aggregations": false,
             "columns": [
               "subreddit",
               "rate",
@@ -32,26 +22,21 @@
               "title",
               "score"
             ],
-            "limit": 1000,
-            "filter": {}
+            "filter": {},
+            "limit": 1000
           }
         }
-      ],
-      "update_permissions": [],
-      "delete_permissions": [],
-      "event_triggers": []
+      ]
     },
     {
-      "table": "postremovedratesview",
-      "object_relationships": [],
-      "array_relationships": [],
-      "insert_permissions": [],
+      "table": {
+        "schema": "public",
+        "name": "postcolumnsreturntypes"
+      },
       "select_permissions": [
         {
           "role": "anonymous",
-          "comment": null,
           "permission": {
-            "allow_aggregations": false,
             "columns": [
               "subreddit",
               "rate",
@@ -64,15 +49,37 @@
               "created_utc",
               "score"
             ],
-            "limit": 1000,
-            "filter": {}
+            "filter": {},
+            "limit": 1000
           }
         }
-      ],
-      "update_permissions": [],
-      "delete_permissions": [],
-      "event_triggers": []
+      ]
     }
   ],
-  "query_templates": []
+  "functions": [
+    {
+      "function": {
+        "schema": "public",
+        "name": "getcommentupvoteremovedratesbydate"
+      }
+    },
+    {
+      "function": {
+        "schema": "public",
+        "name": "getcommentupvoteremovedratesbyrate"
+      }
+    },
+    {
+      "function": {
+        "schema": "public",
+        "name": "getpostupvoteremovedratesbydate"
+      }
+    },
+    {
+      "function": {
+        "schema": "public",
+        "name": "getpostupvoteremovedratesbyrate"
+      }
+    }
+  ]
 }
