@@ -122,9 +122,14 @@ class AddFields():
         # Do not redownload data for IDs that already exist
         old_df = []
         if isfile(self.output_file):
+            # Note: ~150 scores are missing from 3-aggregate_all/RC_ file
+            #       To backfill this you'd need to
+            #          1) query the reddit API for missing scores
+            #          2) change below code to merge scores instead of dropping them
+            #   does not seem worthwhile
             old_df = pd.read_csv(
                 self.output_file,
-                dtype={'created_utc': object},
+                dtype={'created_utc': object, 'score': object},
                 index_col='id',
                 na_filter=False #when titles or comments == 'null' or 'na', do not mark them as NaN in pandas
             )
@@ -145,7 +150,8 @@ class AddFields():
                      verify_integrity=True,
                      drop=False)
         additional_ids = []
-        chunk_size = 800
+        # Chunk size was 800, now 500. PS now returns max of 580
+        chunk_size = 500
         if self.type == 'posts':
             comments_df = pd.read_csv(join(self.output_dir, 'comments.csv'))
             additional_ids = list(comments_df['link_id'])
@@ -183,6 +189,7 @@ class AddFields():
             ## file data to get this information, but I don't have plans to use these
             ## scores anyway. When displaying comments, only the comment score and post
             ## title is shown. Post score is not needed in that case
+            ## Some comment scores are undefined too. See note above "old_df = pd.read_csv()"
             df['score'] = df['score'].astype(object)
             output_df = new_df.join(df[['score']])
             output_df.to_csv(self.output_file)
