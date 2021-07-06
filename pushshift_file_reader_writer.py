@@ -66,7 +66,8 @@ class PushshiftFileProcessor():
         zst_num_bytes = 2**22
         lines_read = 0
         # 34m39s run time for 121,953,600 comments stored on HD [RC_2018-12.zst, 12GB]
-        dctx = zstd.ZstdDecompressor()
+        # 62m00s run time for 187,914,435 comments stored on HD [RC_2020-06.zst, 19GB, higher compression ratio]
+        dctx = zstd.ZstdDecompressor(max_window_size=2147483648)
         with dctx.stream_reader(infile) as reader:
             previous_line = ""
             while True:
