@@ -44,6 +44,8 @@ To download all of the Pushshift dumps for both comments and submissions, run
 
 The results will be in `data/0-pushshift_raw/`.
 
+`./groupDaily.sh` creates monthly files from daily files and moves the daily files to another directory.
+
 ## Usage
 
 To process **full** results,
