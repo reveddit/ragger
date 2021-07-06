@@ -4,8 +4,8 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-startInput="${1}" # any valid date
-endInput="${2}"
+startDate="${1}" # any valid date
+endDate="${2}"
 outputDir="${3:-$SCRIPT_DIR}"
 
 dateFormat="+%Y-%m-%d"
@@ -27,8 +27,8 @@ function sinceEpoch() {
   done
 }
 
-current=$(parseDate "$startInput")
-end=$(parseDate "$endInput")
+current=$(parseDate "$startDate")
+end=$(parseDate "$endDate")
 current_seconds=$(sinceEpoch "$current")
 end_seconds=$(sinceEpoch "$end")
 

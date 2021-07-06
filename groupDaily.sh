@@ -2,8 +2,8 @@
 
 extension='zst'
 
-dailyDir=0-pushshift_raw_daily
 rawDir=0-pushshift_raw
+dailyDir=0-pushshift_raw_daily
 
 cd data/$rawDir
 
