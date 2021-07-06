@@ -1,9 +1,50 @@
 # ragger
-Aggregate reddit data in Pushshift monthly files for display on revddit.com
+Aggregate reddit data in Pushshift monthly files for display on [***Rev***eddit.com](https://www.reveddit.com)
 
-## Basic usage
+## Requirements
 
-To process the **test** dataset included in this repo, run `./processData.sh all test`. Results appear in `test/3-aggregate_all` and `test/4-add_fields`.
+To process the full data set you need,
+
+* 2TB HD: 1 TB of disk space to download the data and another 400 GB for intermediate processing files
+* 40GB RAM: For the `2-aggregate-monthly.py` step. Splitting monthly files into smaller parts may use less memory.
+
+Without this, you can run the code on the included test set in under a minute.
+
+### Environment
+
+Create a `conda` virtual environment and activate it,
+
+```
+conda create --name reveddit --file requirements-conda.txt
+conda activate reveddit
+```
+
+Optionally, install PostgreSQL and include credentials in a `dbconfig.ini` as shown in `dbconfig-example.ini`
+
+### Test
+
+To process the **test** dataset included in this repo,
+
+`./processData.sh all test`
+
+Results appear in `test/3-aggregate_all` and `test/4-add_fields`.
+
+To load results into a database, prepare database credentials in `dbconfig-example.ini` and run either,
+
+* `./test.sh` runs the above command and load results into a local PostgreSQL database, or
+* `./test.sh normal` loads **full** results into the database if files have been downloaded (see below)
+
+### Download
+
+To download all of the Pushshift dumps for both comments and submissions, run
+
+```
+./downloadPushshiftDumps.sh
+```
+
+The results will be in `data/0-pushshift_raw/`.
+
+## Usage
 
 To process **full** results,
 
@@ -11,30 +52,18 @@ To process **full** results,
 1. Store them in `data/0-pushshift_raw/` as specified in `config.ini`
 1. Run `./processData.sh all normal`
 
-## With database
 
-Install postgresql locally. The file `dbconfig-example.ini` contains database credentials.
+## With a remote database
 
-* `./test.sh` loads **test** results into the database.
-* `./test.sh normal` loads **full** results into the database.
+I used a DO droplet. These are the rough steps,
 
-## With remote database using Hasura
-
-1. Set up a Hasura instance on digital ocean following [this guide](https://docs.hasura.io/1.0/graphql/manual/guides/deployment/digital-ocean-one-click.html)
-1. Set up postgresql database credentials
 1. Set up ssh keys
-
-Remotely on the DO droplet,
-
-1. `sudo ufw allow 9090/tcp`
-1. `git clone https://github.com/reveddit/ragger.git`
-1. `cd ragger`
-1. `cp dbconfig-example.ini dbconfig.ini` and set database credentials in the new file
+1. Install Postgres with docker
+1. Create a database login and password for your script
 1. Add the top 4 lines of `droplet-config/pg_hba.conf.head` to `/var/lib/docker/volumes/hasura_db_data/_data/pg_hba.conf`
-1. `sudo cp droplet-config/Caddyfile droplet-config/docker-compose.yaml /etc/hasura/`
-1. Set the droplet's domain name in `/etc/hasura/Caddyfile`
-1. Set admin secret and postgresql password in `/etc/hasura/docker-compose.yaml`
 1. `sudo docker-compose up -d`
+1. git clone this repo
+1. Put the database login and password into a file called `dbconfig.ini` in the root directory of this repo
 
 Then, locally,
 
