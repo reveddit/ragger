@@ -3,5 +3,4 @@ data
 logs/
 log-*.txt
 dbconfig.ini
-*.ipynb
 .ipynb_*
