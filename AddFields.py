@@ -166,7 +166,8 @@ class AddFields():
                 results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
                 #results = ps_es_queryByID('rc', ids_chunk, self.extra_fields)
             else:
-                results = ps_es_queryByID('rs', ids_chunk, self.extra_fields)
+                results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
+                #results = ps_es_queryByID('rs', ids_chunk, self.extra_fields)
             if len(results):
                 resdf = pd.DataFrame(list(results.values()))
                 resdf.set_index('id',
