@@ -33,6 +33,7 @@ commentColumns = [
     ['total_items', BIGINT],
     ['comments.body', TEXT],
     ['comments.created_utc', BIGINT],
+    ['comments.link_id', TEXT],
     ['posts.title', TEXT],
     ['score_of_max_pos_removed_item', BIGINT],
 ]
