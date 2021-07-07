@@ -36,15 +36,17 @@ To load results into a database, prepare database credentials in `dbconfig-examp
 
 ### Download
 
-To download all of the Pushshift dumps for both comments and submissions, run
+To download the subset of Pushshift comment and submission dumps used by this project, run
 
 ```
 ./downloadPushshiftDumps.sh
 ```
 
-The results will be in `data/0-pushshift_raw/`.
+The results will be in `data/0-pushshift_raw/`. The script's comments mention why only a subset of data is used.
 
-`./groupDaily.sh` creates monthly files from daily files and moves the daily files to another directory.
+Then run `./groupDaily.sh`. This creates monthly files from daily files and moves the daily files to another directory.
+
+Here is another Pushshift download script: [`reddit_content_mod/pushshift/pull_data.py`](https://github.com/guywuolletjr/reddit_content_mod/blob/master/pushshift/pull_data.py)
 
 ## Usage
 
