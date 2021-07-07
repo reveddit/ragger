@@ -1,5 +1,5 @@
 # ragger
-Aggregate reddit data in Pushshift monthly files for display on [***Rev***eddit.com/r/\<subreddit\>/top](https://www.reveddit.com/v/?contentType=top)
+Aggregate reddit data in Pushshift monthly files for display on subreddit top pages: [***Rev***eddit.com/r/\<subreddit\>/top](https://www.reveddit.com/v/?contentType=top)
 
 ## Requirements
 
