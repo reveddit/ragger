@@ -46,7 +46,9 @@ The results will be in `data/0-pushshift_raw/`. That [script's comments](https:/
 
 Then run `./groupDaily.sh`. This creates monthly files from daily files and moves the daily files to another directory.
 
-Here is another Pushshift download script: [`reddit_content_mod/pushshift/pull_data.py`](https://github.com/guywuolletjr/reddit_content_mod/blob/master/pushshift/pull_data.py)
+Other Pushshift download scripts:
+* [`reddit_content_mod/pushshift/pull_data.py`](https://github.com/guywuolletjr/reddit_content_mod/blob/master/pushshift/pull_data.py)
+* [PushshiftRedditDistiller](https://github.com/RTIInternational/PushshiftRedditDistiller)
 
 ## Usage
 
