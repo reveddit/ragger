@@ -1,9 +1,9 @@
 # ragger
-Aggregate reddit data in Pushshift monthly files for display on subreddit top pages: [***Rev***eddit.com/r/\<subreddit\>/top](https://www.reveddit.com/v/?contentType=top)
+Identifies highly upvoted removed comments and posts on reddit by aggregating historical data provided by `files.pushshift.io/reddit`. Results are displayed on subreddit top pages: [***Rev***eddit.com/r/\<subreddit\>/top](https://www.reveddit.com/v/?contentType=top)
 
 ## Requirements
 
-To process the full data set you need,
+To process a full month's worth of comment data you need,
 
 * 2TB HD: 1 TB of disk space to download the data and another 400 GB for intermediate processing files
 * 40GB RAM: For the `2-aggregate-monthly.py` step. Splitting monthly files into smaller parts may use less memory.
