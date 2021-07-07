@@ -42,7 +42,7 @@ To download the subset of Pushshift comment and submission dumps used by this pr
 ./downloadPushshiftDumps.sh
 ```
 
-The results will be in `data/0-pushshift_raw/`. The script's comments mention why only a subset of data is used.
+The results will be in `data/0-pushshift_raw/`. That [script's comments](https://github.com/reveddit/ragger/blob/master/downloadPushshiftDumps.sh) mention why only a subset of data is used.
 
 Then run `./groupDaily.sh`. This creates monthly files from daily files and moves the daily files to another directory.
 
