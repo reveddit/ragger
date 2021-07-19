@@ -11,6 +11,20 @@ from simplejson.errors import JSONDecodeError
 from elasticsearch import Elasticsearch, Urllib3HttpConnection
 from elasticsearch_dsl import Search
 import html
+import praw
+from prawcore.requestor import Requestor
+
+class ModifiedRequestor(Requestor):
+    def request(self, *args, **kwargs):
+        super().__dict__['_http'].cookies.set('_options', '{%22pref_quarantine_optin%22:true}')
+        response = super().request(*args, **kwargs)
+        return response
+
+reddit = praw.Reddit(client_id='8x_CT3wS6FugAVYLjLv2Ng',
+                     client_secret=None,
+                     user_agent='u/rhaksw https://github.com/reveddit/ragger',
+                     requestor_class=ModifiedRequestor,
+                    )
 
 class MyConnection(Urllib3HttpConnection):
     def __init__(self, *args, **kwargs):
@@ -94,9 +108,12 @@ def ps_es_queryByID(index, ids, fields):
         results[id] = row
     return results
 
-def setFieldsForRow(row, hit, fields, ES = False):
+def setFieldsForRow(row, hit, fields, ES = False, isRedditObj = False):
     for field in fields:
-        val = hit[field]
+        if isRedditObj:
+            val = getattr(hit, field)
+        else:
+            val = hit[field]
         if field == 'body' or field == 'title':
             val = re.sub(r'\s+', ' ', html.unescape(val)).strip()[:300]
         elif field == 'link_id':
@@ -104,8 +121,10 @@ def setFieldsForRow(row, hit, fields, ES = False):
                 val = val[3:]
             else:
                 val = toBase36(int(val))
+        elif field == 'created_utc':
+            ## For praw obj whose type is float
+            val = int(val)
         row[field] = val
-
 
 class AddFields():
     def __init__(self, input_file, output_dir, type, id_field, extra_fields):
@@ -161,13 +180,8 @@ class AddFields():
         if len(existing_ids):
             ids = [id for id in ids if id not in existing_ids]
         chunks = list(chunk(ids, chunk_size))
-        for ids_chunk in tqdm(chunks):
-            if self.type == 'comments':
-                results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
-                #results = ps_es_queryByID('rc', ids_chunk, self.extra_fields)
-            else:
-                results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
-                #results = ps_es_queryByID('rs', ids_chunk, self.extra_fields)
+        names_not_in_pushshift = set()
+        def addResults(results):
             if len(results):
                 resdf = pd.DataFrame(list(results.values()))
                 resdf.set_index('id',
@@ -175,7 +189,27 @@ class AddFields():
                                 verify_integrity=True,
                                 drop=True)
                 new_dfs.append(resdf)
-        print()
+
+        for ids_chunk in tqdm(chunks):
+            if self.type == 'comments':
+                results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
+                #results = ps_es_queryByID('rc', ids_chunk, self.extra_fields)
+            else:
+                results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
+                #results = ps_es_queryByID('rs', ids_chunk, self.extra_fields)
+                ## For the moment, only looking up missing post IDs with reddit
+                found = set(results.keys())
+                names_not_in_pushshift.update(['t3_'+id for id in ids_chunk if id not in found])
+            addResults(results)
+        lookup_with_reddit_chunks = list(chunk(list(names_not_in_pushshift), 100))
+        for names_chunk in tqdm(lookup_with_reddit_chunks):
+            reddit_results = list(reddit.info(names_chunk))
+            results = {}
+            for hit in reddit_results:
+                row = {'id': hit.id}
+                setFieldsForRow(row, hit, self.extra_fields, False, True)
+                results[hit.id] = row
+            addResults(results)
         if len(new_dfs):
             if len(old_df):
                 new_dfs.append(old_df)
