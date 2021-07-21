@@ -41,7 +41,7 @@ outputFolder="$SCRIPT_DIR/data/0-pushshift_raw/"
 ./monthlyFileDownloader.sh C .bz2 2015-09 2017-11 "$outputFolder"
 
 ./monthlyFileDownloader.sh C  .xz 2017-12 2018-09 "$outputFolder"
-./monthlyFileDownloader.sh C .zst 2018-10 2019-12 "$outputFolder"
+./monthlyFileDownloader.sh C .zst 2018-10 2020-12 "$outputFolder"
 
 ## These dates' Pushshift submission data are not usable by this project. See note above.
   #./monthlyFileDownloader.sh S .bz2 2012-01 2014-12 "$outputFolder"
@@ -52,4 +52,6 @@ outputFolder="$SCRIPT_DIR/data/0-pushshift_raw/"
 ./monthlyFileDownloader.sh S .xz  2018-06 2018-10 "$outputFolder"
 ./monthlyFileDownloader.sh S .zst 2018-11 2020-04 "$outputFolder"
 
-./dailyFileDownloader.sh 2020-01-01 2020-06-30 "$outputFolder"
+
+# daily downloader can be used to get latest data in parts to avoid connection issues, or if monthly files are unavailable
+# ./dailyFileDownloader.sh 2020-01-01 2020-12-31 "$outputFolder"
