@@ -11,7 +11,7 @@ filesDir="${3:-$SCRIPT_DIR/data/0-pushshift_raw}"
 
 "$SCRIPT_DIR/createDirectories.sh"
 
-fileSizesFile="$SCRIPT_DIR/data/remote_file_sizes.txt"
+fileSizesFile="$SCRIPT_DIR/remote_file_sizes.txt"
 
 touch "$fileSizesFile"
 
@@ -47,14 +47,16 @@ do
     remoteFileSize=$(wget --spider --server-response -O - https://files.pushshift.io/reddit/comments/$file 2>&1 | sed -ne '/Content-Length/{s/.*: //;p}')
     echo $file $remoteFileSize >> "$fileSizesFile"
   fi
-  localFileSize=$(stat -c %s $filesDir/$file)
+## TODO: where should this code go?
+##       should be able to download all file sizes before downloading the files
+#  localFileSize=$(stat -c %s $filesDir/$file)
 
-  if [[ "$remoteFileSize" -eq "$localFileSize" ]] ; then
-    echo $file size match
-  else
-    echo $file SIZE MISMATCH remote=$remoteFileSize
-    echo $file SIZE MISMATCH  local=$localFileSize
-  fi
+#  if [[ "$remoteFileSize" -eq "$localFileSize" ]] ; then
+#    echo $file size match
+#  else
+#    echo $file SIZE MISMATCH remote=$remoteFileSize
+#    echo $file SIZE MISMATCH  local=$localFileSize
+#  fi
   current=$(parseDate "$current + 1 day")
   current_seconds=$(sinceEpoch "$current")
 done
