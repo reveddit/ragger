@@ -25,6 +25,9 @@ class Launcher():
             basename = os.path.basename(re.sub(r'\.[^.]*$','',input_file))
             upl = FilesLog(opts['unprocessable_files_log'])
             sl = FilesLog(opts['skippable_files_log'])
+            # Skip daily files
+            if basename.count('-') > 1:
+                continue
             if basename in (upl.read_entries()+sl.read_entries()):
                 continue
             type = 'comments'
