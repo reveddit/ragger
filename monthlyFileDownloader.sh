@@ -56,7 +56,7 @@ do
   #   echo DOES NOT EXIST: $url
   # fi
   if [[ -z "$localpath_base_year" && -z "$localpath_base_month" ]] ; then
-    wget --no-clobber --directory-prefix="$outputDir" https://files.pushshift.io/reddit/$thingType/$filename
+    wget --continue --directory-prefix="$outputDir" https://files.pushshift.io/reddit/$thingType/$filename
   else
     ls -l $localpath_base_month $localpath_base_year 2>/dev/null
   fi

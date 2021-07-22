@@ -10,6 +10,8 @@
 # Presumably, Pushshift did not store entries for removed comments for that period.
 # You would need to redownload this period's comments from reddit to use them in this project.
 # This download could be made faster by skipping any comment IDs present in the Pushshift dumps.
+# It may or may not be useful for this project.  If the Pushshift API has the body text for these comments then it is useful.
+# My guess is Pushshift does not have them since its collection process began later, as I understand it.
 #
 # Regarding submissions prior to 2018/06:
 #    Some of Pushshift's record for this period is not usable.
@@ -41,7 +43,9 @@ outputFolder="$SCRIPT_DIR/data/0-pushshift_raw/"
 ./monthlyFileDownloader.sh C .bz2 2015-09 2017-11 "$outputFolder"
 
 ./monthlyFileDownloader.sh C  .xz 2017-12 2018-09 "$outputFolder"
-./monthlyFileDownloader.sh C .zst 2018-10 2020-12 "$outputFolder"
+./monthlyFileDownloader.sh C .zst 2018-10 2019-12 "$outputFolder"
+./dailyFileDownloader.sh 2020-01-01 2020-10-31 "$outputFolder" # get data in smaller parts where possible: easier to download
+./monthlyFileDownloader.sh C .zst 2020-11 2020-12 "$outputFolder"
 
 ## These dates' Pushshift submission data are not usable by this project. See note above.
   #./monthlyFileDownloader.sh S .bz2 2012-01 2014-12 "$outputFolder"
@@ -53,5 +57,3 @@ outputFolder="$SCRIPT_DIR/data/0-pushshift_raw/"
 ./monthlyFileDownloader.sh S .zst 2018-11 2020-04 "$outputFolder"
 
 
-# daily downloader can be used to get latest data in parts to avoid connection issues, or if monthly files are unavailable
-# ./dailyFileDownloader.sh 2020-01-01 2020-12-31 "$outputFolder"

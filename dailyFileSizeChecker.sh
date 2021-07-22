@@ -6,7 +6,14 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 startDate="${1}" # any valid date
 endDate="${2}"
-outputDir="${3:-$SCRIPT_DIR}"
+filesDir="${3:-$SCRIPT_DIR/data/0-pushshift_raw}"
+
+
+"$SCRIPT_DIR/createDirectories.sh"
+
+fileSizesFile="$SCRIPT_DIR/data/remote_file_sizes.txt"
+
+touch "$fileSizesFile"
 
 dateFormat="+%Y-%m-%d"
 function parseDate() {
@@ -34,7 +41,20 @@ end_seconds=$(sinceEpoch "$end")
 
 while (( "$current_seconds" <= "$end_seconds" ))
 do
-  wget --continue --directory-prefix="$outputDir" https://files.pushshift.io/reddit/comments/RC_$current.zst
+  file=RC_$current.zst
+  remoteFileSize=$(grep $file "$fileSizesFile" | awk '{print $2}')
+  if [[ -z "$remoteFileSize" ]] ; then
+    remoteFileSize=$(wget --spider --server-response -O - https://files.pushshift.io/reddit/comments/$file 2>&1 | sed -ne '/Content-Length/{s/.*: //;p}')
+    echo $file $remoteFileSize >> "$fileSizesFile"
+  fi
+  localFileSize=$(stat -c %s $filesDir/$file)
+
+  if [[ "$remoteFileSize" -eq "$localFileSize" ]] ; then
+    echo $file size match
+  else
+    echo $file SIZE MISMATCH remote=$remoteFileSize
+    echo $file SIZE MISMATCH  local=$localFileSize
+  fi
   current=$(parseDate "$current + 1 day")
   current_seconds=$(sinceEpoch "$current")
 done

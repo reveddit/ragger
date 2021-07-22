@@ -197,7 +197,8 @@ class AddFields():
             else:
                 results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
                 #results = ps_es_queryByID('rs', ids_chunk, self.extra_fields)
-                ## For the moment, only looking up missing post IDs with reddit
+                ## Only looking up missing post IDs with reddit
+                ## Pointless to look up missing comment IDs there since body text would all be [removed]
                 found = set(results.keys())
                 names_not_in_pushshift.update(['t3_'+id for id in ids_chunk if id not in found])
             addResults(results)
