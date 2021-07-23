@@ -25,12 +25,13 @@ getDatePeriod() {
     exit 1
   fi
 }
+echoerr(){ >&2 echo $@; }
 
 period=$(getDatePeriod "$startDate")
 endPeriodType=$(getDatePeriod "$endDate")
 
 if [[ "$period" != "$endPeriodType" ]] ; then
-  echo ERROR: start and end period types do not match
+  echoerr ERROR: start and end period types do not match
   exit 1
 fi
 
@@ -64,6 +65,7 @@ function sinceEpoch() {
   date -d "$dateToParse" +%s
 }
 
+
 current=$(parseDate "$startDate")
 end=$(parseDate "$endDate")
 current_seconds=$(sinceEpoch "$current")
@@ -71,6 +73,7 @@ end_seconds=$(sinceEpoch "$end")
 dailyFileMatch='.*-.*-'
 while (( "$current_seconds" <= "$end_seconds" ))
 do
+  error=false
   file=RC_${current}${extension}
   remoteFileSize=$(grep $file "$fileSizesFile" | awk '{print $2}')
   if [[ -z "$remoteFileSize" ]] ; then
@@ -81,25 +84,32 @@ do
         monthly=$(egrep -v "$dailyFileMatch" "$fileSizesFile" | grep . | sort)
         daily=$(egrep "$dailyFileMatch" "$fileSizesFile" | sort)
         printf "$monthly\n$daily\n" > "$fileSizesFile"
-        echo $file $remoteFileSize
       else
-        echo ERROR: $file [$remoteFileSize] "(bad file size)"
+        echoerr ERROR: $file [$remoteFileSize] "(bad file size)"
+        error=true
       fi
+    else
+      echoerr ERROR: remote file does not exist: [$file]
+      error=true
     fi
   fi
-
+  if [[ "$error" -eq "true" && ! -z "$remoteFileSize" ]] ; then
+    echo $file $remoteFileSize
+  fi
   current=$(parseDate "$current" "+ 1 $period")
   current_seconds=$(sinceEpoch "$current")
 
   ## TODO: where should this code go?
   ##       should be able to download all file sizes before downloading the files
   ##
-   # localFileSize=$(stat -c %s $filesDir/$file)
-   # if [[ "$remoteFileSize" -eq "$localFileSize" ]] ; then
-   #   echo $file size match
-   # else
-   #   echo $file SIZE MISMATCH remote=$remoteFileSize
-   #   echo $file SIZE MISMATCH  local=$localFileSize
-   # fi
-
+    # localFile="$filesDir/$file"
+    # if [[ -f "$localFile" ]] ; then
+    #   localFileSize=$(stat -c %s $filesDir/$file)
+    #   if [[ "$remoteFileSize" -eq "$localFileSize" ]] ; then
+    #     echo $file size match
+    #   else
+    #     echo "$file SIZE MISMATCH remote=$remoteFileSize"
+    #     echo "$file SIZE MISMATCH  local=$localFileSize"
+    #   fi
+    # fi
 done

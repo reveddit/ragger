@@ -18,28 +18,27 @@ if [[ "$C_OR_S" == "S" ]] ; then
 fi
 
 dateFormat="+%Y-%m"
+validDateSuffix="-01"
 function parseDate() {
-    for var in "$@"
-    do
-      if [[ "$var" =~ ^[0-9]+$ ]] ; then
-        date "$dateFormat" -d@"$var";
-      else
-        date "$dateFormat" -d "$var";
-      fi
-    done
+    date="${1}${validDateSuffix}"
+    add="${2}"
+    dateToParse="${date} ${add}"
+    if [[ "$var" =~ ^[0-9]+$ ]] ; then
+      date "$dateFormat" -d@"$dateToParse";
+    else
+      date "$dateFormat" -d "$dateToParse";
+    fi
 };
 
 function sinceEpoch() {
-  for var in "$@"
-  do
-    date -d "$var" +%s
-  done
+  dateToParse="${1}${validDateSuffix}"
+  date -d "$dateToParse" +%s
 }
 
-current=$(parseDate "${startDate}-01")
-end=$(parseDate "${endDate}-01")
-current_seconds=$(sinceEpoch "${current}-01")
-end_seconds=$(sinceEpoch "${end}-01")
+current=$(parseDate "${startDate}")
+end=$(parseDate "${endDate}")
+current_seconds=$(sinceEpoch "${current}")
+end_seconds=$(sinceEpoch "${end}")
 
 while (( "$current_seconds" <= "$end_seconds" ))
 do
@@ -48,18 +47,22 @@ do
   filename=${filename_root}${current}${extension}
   filename_base_month=${filename_root}${current}
   filename_base_year=${filename_root}${current_year}
-  localpath_base_month=$(ls "$outputDir/${filename_base_month}".* 2>/dev/null)
   localpath_base_year=$(ls "$outputDir/${filename_base_year}".* 2>/dev/null)
   url="https://files.pushshift.io/reddit/$thingType/$filename"
-  ## Uncomment to report error if remote file does not exist
-  # if ! curl --head --fail --silent "$url" >/dev/null; then
-  #   echo DOES NOT EXIST: $url
-  # fi
-  if [[ -z "$localpath_base_year" && -z "$localpath_base_month" ]] ; then
-    wget --continue --directory-prefix="$outputDir" https://files.pushshift.io/reddit/$thingType/$filename
+  localpath_base_month="$outputDir/${filename}"
+
+  if [[ -z "$localpath_base_year" ]] ; then
+    remoteFileSize=$("$SCRIPT_DIR/fileSizeChecker.sh" "$current" "$current" "$outputDir" | awk '{print $2}')
+    localFileSize=''
+    if [[ -f "$localpath_base_month" ]] ; then
+      localFileSize=$(stat -c %s "$localpath_base_month")
+    fi
+    if [[ "$remoteFileSize" && (! -f "$localpath_base_month" || "$remoteFileSize" -ne "$localFileSize") ]] ; then
+      wget --continue --directory-prefix="$outputDir" https://files.pushshift.io/reddit/$thingType/$filename
+    fi
   else
-    ls -l $localpath_base_month $localpath_base_year 2>/dev/null
+    ls $localpath_base_year 2>/dev/null
   fi
-  current=$(parseDate "${current}-01 + 1 month")
-  current_seconds=$(sinceEpoch "${current}-01")
+  current=$(parseDate "${current}" "+ 1 month")
+  current_seconds=$(sinceEpoch "${current}")
 done
