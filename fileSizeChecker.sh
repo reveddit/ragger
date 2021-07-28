@@ -8,7 +8,6 @@ startDate="${1}" # date in the format 2020-01 for monthly, or 2020-01-01 for dai
 endDate="${2}" # date matching the format of startDate
 filesDir="${3:-$SCRIPT_DIR/data/0-pushshift_raw}"
 extension="${4:-.zst}"
-datePeriod=day
 validDateSuffix=""
 
 getDatePeriod() {
@@ -93,7 +92,7 @@ do
       error=true
     fi
   fi
-  if [[ "$error" -eq "true" && ! -z "$remoteFileSize" ]] ; then
+  if [[ "$error" == "false" && ! -z "$remoteFileSize" ]] ; then
     echo $file $remoteFileSize
   fi
   current=$(parseDate "$current" "+ 1 $period")

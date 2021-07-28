@@ -34,7 +34,16 @@ end_seconds=$(sinceEpoch "$end")
 
 while (( "$current_seconds" <= "$end_seconds" ))
 do
-  wget --continue --directory-prefix="$outputDir" https://files.pushshift.io/reddit/comments/RC_$current.zst
+  fileBase=RC_$current.zst
+  localFile="$outputDir/$fileBase"
+  remoteFileSize=$("$SCRIPT_DIR/fileSizeChecker.sh" "$current" "$current" "$outputDir" | awk '{print $2}')
+  localFileSize=''
+  if [[ -f "$localFile" ]] ; then
+    localFileSize=$(stat -c %s "$localFile")
+  fi
+  if [[ "$remoteFileSize" && (! -f "$localFile" || "$remoteFileSize" -ne "$localFileSize") ]] ; then
+    wget --continue --directory-prefix="$outputDir" https://files.pushshift.io/reddit/comments/$fileBase
+  fi
   current=$(parseDate "$current + 1 day")
   current_seconds=$(sinceEpoch "$current")
 done
