@@ -15,3 +15,20 @@ class FilesLog:
         else:
             with open(self.log) as file:
                 return file.read().splitlines()
+
+class RemoteFileSizes:
+    def __init__(self, filename):
+        sizes = {}
+        with open(filename) as file:
+            for line in file.read().splitlines():
+                name, size = line.split()
+                sizes[name] = int(size)
+        self.sizes = sizes
+    def getSizes(self):
+        return self.sizes
+    def getSumOfDaily(self, monthly):
+        sum = 0
+        for filename, size in self.sizes.items():
+            if (monthly+'-') in filename:
+                sum += size
+        return sum

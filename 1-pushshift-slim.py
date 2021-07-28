@@ -1,12 +1,12 @@
 import argparse
 import os
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, getsize
 import re
 
 from ConfigTyped import ConfigTyped
 from pushshift_file_reader_writer import PushshiftFileProcessor
-from files_log import FilesLog
+from files_log import FilesLog, RemoteFileSizes
 from exceptions import BadSubmissionData
 from logger import log
 
@@ -20,16 +20,30 @@ class Launcher():
         onlyfiles = sorted([join(idir, f) for f in listdir(idir) if isfile(join(idir, f))], reverse=True,
                            key = lambda x: os.path.basename(x)[3:])
         log('1-pushshift-slim')
+        upl = FilesLog(opts['unprocessable_files_log'])
+        sl = FilesLog(opts['skippable_files_log'])
+        skippable_files = upl.read_entries()+sl.read_entries()
+        rfs = RemoteFileSizes(opts['remote_file_sizes'])
+        remoteFileSizes = rfs.getSizes()
         for input_file in onlyfiles:
             extension = os.path.splitext(input_file)[1].lower()
             basename = os.path.basename(re.sub(r'\.[^.]*$','',input_file))
-            upl = FilesLog(opts['unprocessable_files_log'])
-            sl = FilesLog(opts['skippable_files_log'])
+            baseWithExt = basename + extension
             # Skip daily files
             if basename.count('-') > 1:
                 continue
-            if basename in (upl.read_entries()+sl.read_entries()):
+            if basename in skippable_files:
                 continue
+            remoteSize = remoteFileSizes.get(baseWithExt)
+            localSize = getsize(input_file)
+            if remoteSize and remoteSize != localSize:
+                sumOfRemoteDailySizes = rfs.getSumOfDaily(basename)
+                if sumOfRemoteDailySizes != localSize:
+                    log('SIZE MISMATCH:', baseWithExt,
+                    '\n                  remote (expected): ', remoteSize,
+                    '\n     sum of remote daily (expected): ', sumOfRemoteDailySizes,
+                    '\n                  local    (actual): ', localSize)
+                    continue
             type = 'comments'
             if basename[1].lower() == 's':
                 type = 'posts'
