@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# Usage: ./dailyFileDownloader.sh 2020-01-01 2020-06-30 data/0-pushshift_raw/
+# Usage: ./dailyFileDownloader.sh C 2020-01-01 2020-06-30 data/0-pushshift_raw/
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-startDate="${1}" # date in the format 2020-01 for monthly, or 2020-01-01 for daily
-endDate="${2}" # date matching the format of startDate
-filesDir="${3:-$SCRIPT_DIR/data/0-pushshift_raw}"
-extension="${4:-.zst}"
+C_OR_S="${1:-C}" #C or S for comments or submissions
+startDate="${2}" # date in the format 2020-01 for monthly, or 2020-01-01 for daily
+endDate="${3}" # date matching the format of startDate
+filesDir="${4:-$SCRIPT_DIR/data/0-pushshift_raw}"
+extension="${5:-.zst}"
 validDateSuffix=""
 
 getDatePeriod() {
@@ -32,6 +33,11 @@ endPeriodType=$(getDatePeriod "$endDate")
 if [[ "$period" != "$endPeriodType" ]] ; then
   echoerr ERROR: start and end period types do not match
   exit 1
+fi
+
+thingType='comments'
+if [[ "$C_OR_S" == "S" ]] ; then
+  thingType='submissions'
 fi
 
 "$SCRIPT_DIR/createDirectories.sh"
@@ -73,14 +79,14 @@ dailyFileMatch='.*-.*-'
 while (( "$current_seconds" <= "$end_seconds" ))
 do
   error=false
-  file=RC_${current}${extension}
+  file=R${C_OR_S}_${current}${extension}
   remoteFileSize=$(grep $file "$fileSizesFile" | awk '{print $2}')
   if [[ -z "$remoteFileSize" ]] ; then
-    remoteFileSize=$(wget --spider --server-response -O - https://files.pushshift.io/reddit/comments/$file 2>&1 | sed -ne '/Content-Length/{s/.*: //;p}')
+    remoteFileSize=$(wget --spider --server-response -O - https://files.pushshift.io/reddit/${thingType}/$file 2>&1 | sed -ne '/Content-Length/{s/.*: //;p}')
     if [[ ! -z "$remoteFileSize" ]] ; then
       if [[ "$remoteFileSize" =~ ^[0-9]+$ && $remoteFileSize -gt 1000 ]] ; then
         echo $file $remoteFileSize >> "$fileSizesFile"
-        monthly=$(egrep -v "$dailyFileMatch" "$fileSizesFile" | grep . | sort)
+        monthly=$(egrep -v "$dailyFileMatch" "$fileSizesFile" | grep . | sort -t _ -k2)
         daily=$(egrep "$dailyFileMatch" "$fileSizesFile" | sort)
         printf "$monthly\n$daily\n" > "$fileSizesFile"
       else
