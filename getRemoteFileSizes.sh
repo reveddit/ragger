@@ -102,20 +102,6 @@ do
   fi
   current=$(parseDate "$current" "+ 1 $period")
   current_seconds=$(sinceEpoch "$current")
-
-  ## TODO: where should this code go?
-  ##       should be able to download all file sizes before downloading the files
-  ##
-    # localFile="$filesDir/$file"
-    # if [[ -f "$localFile" ]] ; then
-    #   localFileSize=$(stat -c %s $filesDir/$file)
-    #   if [[ "$remoteFileSize" -eq "$localFileSize" ]] ; then
-    #     echo $file size match
-    #   else
-    #     echo "$file SIZE MISMATCH remote=$remoteFileSize"
-    #     echo "$file SIZE MISMATCH  local=$localFileSize"
-    #   fi
-    # fi
 done
 
 
