@@ -76,9 +76,9 @@ end=$(parseDate "$endDate")
 current_seconds=$(sinceEpoch "$current")
 end_seconds=$(sinceEpoch "$end")
 dailyFileMatch='.*-.*-'
+error=false
 while (( "$current_seconds" <= "$end_seconds" ))
 do
-  error=false
   file=R${C_OR_S}_${current}${extension}
   remoteFileSize=$(grep $file "$fileSizesFile" | awk '{print $2}')
   if [[ -z "$remoteFileSize" ]] ; then
@@ -118,3 +118,8 @@ do
     #   fi
     # fi
 done
+
+
+if [[ "$error" == "true" ]] ; then
+  exit 1
+fi

@@ -52,7 +52,7 @@ do
   localpath_base_month="$outputDir/${filename}"
 
   if [[ -z "$localpath_base_year" ]] ; then
-    remoteFileSize=$("$SCRIPT_DIR/fileSizeChecker.sh" "$C_OR_S" "$current" "$current" "$outputDir" "$extension" | awk '{print $2}')
+    remoteFileSize=$("$SCRIPT_DIR/getRemoteFileSizes.sh" "$C_OR_S" "$current" "$current" "$outputDir" "$extension" | awk '{print $2}')
     localFileSize=''
     if [[ -f "$localpath_base_month" ]] ; then
       localFileSize=$(stat -c %s "$localpath_base_month")
