@@ -23,9 +23,8 @@ ls *-*-*$extension 2>/dev/null | cut -d - -f1,2 | sort -u | while read type_year
     exit 1
   fi
   if [[ "$error" == "false" ]] ; then
-    # cat $files > $outputFile
-    # mv $files ../$dailyDir/
-    echo $files
+    cat $files > $outputFile
+    mv $files ../$dailyDir/
   else
     exit 1
   fi
