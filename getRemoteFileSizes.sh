@@ -1,14 +1,13 @@
 #!/bin/bash
 
-# Usage: ./dailyFileDownloader.sh C 2020-01-01 2020-06-30 data/0-pushshift_raw/
+# Usage: ./getRemoteFileSizes.sh C 2020-01 2020-02 .zst
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 C_OR_S="${1:-C}" #C or S for comments or submissions
 startDate="${2}" # date in the format 2020-01 for monthly, or 2020-01-01 for daily
 endDate="${3}" # date matching the format of startDate
-filesDir="${4:-$SCRIPT_DIR/data/0-pushshift_raw}"
-extension="${5:-.zst}"
+extension="${4:-.zst}"
 validDateSuffix=""
 
 getDatePeriod() {
@@ -25,7 +24,7 @@ getDatePeriod() {
     exit 1
   fi
 }
-echoerr(){ >&2 echo $@; }
+echoerr(){ >&2 echo "$@"; }
 
 period=$(getDatePeriod "$startDate")
 endPeriodType=$(getDatePeriod "$endDate")

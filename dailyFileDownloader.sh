@@ -36,7 +36,7 @@ while (( "$current_seconds" <= "$end_seconds" ))
 do
   fileBase=RC_$current.zst
   localFile="$outputDir/$fileBase"
-  remoteFileSize=$("$SCRIPT_DIR/getRemoteFileSizes.sh" C "$current" "$current" "$outputDir" | awk '{print $2}')
+  remoteFileSize=$("$SCRIPT_DIR/getRemoteFileSizes.sh" C "$current" "$current" | awk '{print $2}')
   localFileSize=''
   if [[ -f "$localFile" ]] ; then
     localFileSize=$(stat -c %s "$localFile")
