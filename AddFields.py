@@ -32,7 +32,7 @@ class MyConnection(Urllib3HttpConnection):
         super(MyConnection, self).__init__(*args, **kwargs)
         self.headers.update(extra_headers)
 
-
+USE_ELASTIC=True
 
 postURL = 'https://api.pushshift.io/reddit/submission/search/'
 commentURL = 'https://api.pushshift.io/reddit/comment/search/'
@@ -89,7 +89,7 @@ def ps_api_queryByID(url, ids, fields):
     return results
 
 def ps_es_queryByID(index, ids, fields):
-    es = Elasticsearch([{'host': 'elastic.pushshift.io', 'port': 80}],
+    es = Elasticsearch([{'host': 'elastic.pushshift.io', 'port': 443, 'use_ssl': True}],
                        connection_class=MyConnection,
                        extra_headers = {'Referer': 'https://revddit.com'},
                        send_get_body_as='source',
@@ -103,6 +103,9 @@ def ps_es_queryByID(index, ids, fields):
     results = {}
     for hit in response:
         id = toBase36(int(hit.meta.id))
+        if hasattr(hit, 'id'):
+            # need to delete id here so it doesn't appear in 'hit' for setFieldsForRow
+            del hit.id
         row = {'id': id}
         setFieldsForRow(row, hit, fields, True)
         results[id] = row
@@ -117,7 +120,7 @@ def setFieldsForRow(row, hit, fields, ES = False, isRedditObj = False):
         if field == 'body' or field == 'title':
             val = re.sub(r'\s+', ' ', html.unescape(val)).strip()[:300]
         elif field == 'link_id':
-            if not ES:
+            if not ES or (val is not None and not isinstance(val, int)):
                 val = val[3:]
             else:
                 val = toBase36(int(val))
@@ -169,8 +172,8 @@ class AddFields():
                      verify_integrity=True,
                      drop=False)
         additional_ids = []
-        # Chunk size was 800, now 500. PS now returns max of 580
-        chunk_size = 500
+        # Chunk size can be 800 w/elastic, 500 w/api.pushshift.io which now returns max of 580
+        chunk_size = 800 if USE_ELASTIC else 500
         if self.type == 'posts':
             comments_df = pd.read_csv(join(self.output_dir, 'comments.csv'))
             additional_ids = list(comments_df['link_id'])
@@ -191,12 +194,22 @@ class AddFields():
                 new_dfs.append(resdf)
 
         for ids_chunk in tqdm(chunks):
-            if self.type == 'comments':
-                results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
-                #results = ps_es_queryByID('rc', ids_chunk, self.extra_fields)
-            else:
-                results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
-                #results = ps_es_queryByID('rs', ids_chunk, self.extra_fields)
+            elastic_index = 'rc' if self.type == 'comments' else 'rs'
+            results = {}
+            sleepTime=1
+            while True:
+                try:
+                    if USE_ELASTIC:
+                        results = ps_es_queryByID(elastic_index, ids_chunk, self.extra_fields)
+                        break
+                    else:
+                        results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
+                except Exception as e:
+                    log('ERROR: Elastic connection failed, trying again after sleep', sleepTime)
+                    sleep(sleepTime)
+                    sleepTime += 1
+
+            if self.type == 'posts':
                 ## Only looking up missing post IDs with reddit
                 ## Pointless to look up missing comment IDs there since body text would all be [removed]
                 found = set(results.keys())
@@ -204,7 +217,16 @@ class AddFields():
             addResults(results)
         lookup_with_reddit_chunks = list(chunk(list(names_not_in_pushshift), 100))
         for names_chunk in tqdm(lookup_with_reddit_chunks):
-            reddit_results = list(reddit.info(names_chunk))
+            sleepTime=1
+            reddit_results = []
+            while True:
+                try:
+                    reddit_results = list(reddit.info(names_chunk))
+                    break
+                except Exception as e:
+                    log('ERROR: Reddit connection failed, trying again after sleep', sleepTime)
+                    sleep(sleepTime)
+                    sleepTime += 1
             results = {}
             for hit in reddit_results:
                 row = {'id': hit.id}
