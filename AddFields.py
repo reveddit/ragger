@@ -88,8 +88,10 @@ def ps_api_queryByID(url, ids, fields):
         results[id] = row
     return results
 
+# not working: ElasticSearch({..., 'port': 443, 'use_ssl': True})
+#  must be because some package has the wrong version
 def ps_es_queryByID(index, ids, fields):
-    es = Elasticsearch([{'host': 'elastic.pushshift.io', 'port': 443, 'use_ssl': True}],
+    es = Elasticsearch([{'host': 'elastic.pushshift.io', 'port': 80}],
                        connection_class=MyConnection,
                        extra_headers = {'Referer': 'https://revddit.com'},
                        send_get_body_as='source',
@@ -128,6 +130,19 @@ def setFieldsForRow(row, hit, fields, ES = False, isRedditObj = False):
             ## For praw obj whose type is float
             val = int(val)
         row[field] = val
+
+def loopUntilRequestSucceeds(requestFunction, errorMsg):
+    sleepTime=1
+    while True:
+        try:
+            results = requestFunction()
+            break
+        except Exception as e:
+            log(errorMsg + '.', 'Trying again after sleep', sleepTime)
+            sleep(sleepTime)
+            sleepTime += 1
+    return results
+
 
 class AddFields():
     def __init__(self, input_file, output_dir, type, id_field, extra_fields):
@@ -195,44 +210,28 @@ class AddFields():
 
         for ids_chunk in tqdm(chunks):
             elastic_index = 'rc' if self.type == 'comments' else 'rs'
-            results = {}
             sleepTime=1
-            while True:
-                try:
-                    if USE_ELASTIC:
-                        results = ps_es_queryByID(elastic_index, ids_chunk, self.extra_fields)
-                        break
-                    else:
-                        results = ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
-                except Exception as e:
-                    log('ERROR: Elastic connection failed, trying again after sleep', sleepTime)
-                    sleep(sleepTime)
-                    sleepTime += 1
-
+            if USE_ELASTIC:
+                requestFunction = lambda: ps_es_queryByID(elastic_index, ids_chunk, self.extra_fields)
+            else:
+                requestFunction = lambda: ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
+            pushshift_results = loopUntilRequestSucceeds(requestFunction, 'ERROR: Elastic connection failed')
             if self.type == 'posts':
                 ## Only looking up missing post IDs with reddit
                 ## Pointless to look up missing comment IDs there since body text would all be [removed]
-                found = set(results.keys())
+                found = set(pushshift_results.keys())
                 names_not_in_pushshift.update(['t3_'+id for id in ids_chunk if id not in found])
-            addResults(results)
+            addResults(pushshift_results)
         lookup_with_reddit_chunks = list(chunk(list(names_not_in_pushshift), 100))
         for names_chunk in tqdm(lookup_with_reddit_chunks):
             sleepTime=1
-            reddit_results = []
-            while True:
-                try:
-                    reddit_results = list(reddit.info(names_chunk))
-                    break
-                except Exception as e:
-                    log('ERROR: Reddit connection failed, trying again after sleep', sleepTime)
-                    sleep(sleepTime)
-                    sleepTime += 1
-            results = {}
+            reddit_results = loopUntilRequestSucceeds(lambda: list(reddit.info(names_chunk)), 'ERROR: Reddit connection failed')
+            reddit_results_to_add = {}
             for hit in reddit_results:
                 row = {'id': hit.id}
                 setFieldsForRow(row, hit, self.extra_fields, False, True)
-                results[hit.id] = row
-            addResults(results)
+                reddit_results_to_add[hit.id] = row
+            addResults(reddit_results_to_add)
         if len(new_dfs):
             if len(old_df):
                 new_dfs.append(old_df)
