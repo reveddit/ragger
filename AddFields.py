@@ -34,6 +34,8 @@ class MyConnection(Urllib3HttpConnection):
 
 USE_ELASTIC=True
 
+ELASTIC_TYPE_TO_INDEX = {'comments': 'rc', 'posts': 'rs'}
+
 postURL = 'https://api.pushshift.io/reddit/submission/search/'
 commentURL = 'https://api.pushshift.io/reddit/comment/search/'
 
@@ -209,10 +211,8 @@ class AddFields():
                 new_dfs.append(resdf)
 
         for ids_chunk in tqdm(chunks):
-            elastic_index = 'rc' if self.type == 'comments' else 'rs'
-            sleepTime=1
             if USE_ELASTIC:
-                requestFunction = lambda: ps_es_queryByID(elastic_index, ids_chunk, self.extra_fields)
+                requestFunction = lambda: ps_es_queryByID(ELASTIC_TYPE_TO_INDEX[self.type], ids_chunk, self.extra_fields)
             else:
                 requestFunction = lambda: ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
             pushshift_results = loopUntilRequestSucceeds(requestFunction, 'ERROR: Elastic connection failed')
@@ -224,7 +224,6 @@ class AddFields():
             addResults(pushshift_results)
         lookup_with_reddit_chunks = list(chunk(list(names_not_in_pushshift), 100))
         for names_chunk in tqdm(lookup_with_reddit_chunks):
-            sleepTime=1
             reddit_results = loopUntilRequestSucceeds(lambda: list(reddit.info(names_chunk)), 'ERROR: Reddit connection failed')
             reddit_results_to_add = {}
             for hit in reddit_results:
