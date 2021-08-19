@@ -27,7 +27,8 @@ class Launcher():
                            opts['add_fields_dir'],
                            type,
                            opts['add_fields_id_field'],
-                           list(map(lambda x: x.strip(), opts['extra_fields_'+type].split(',')))
+                           list(map(lambda x: x.strip(), opts['extra_fields_'+type].split(','))),
+                           opts['inaccessible_ids_file_'+type],
                           )
             af.process()
         log('finished')

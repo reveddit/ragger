@@ -147,12 +147,13 @@ def loopUntilRequestSucceeds(requestFunction, errorMsg):
 
 
 class AddFields():
-    def __init__(self, input_file, output_dir, type, id_field, extra_fields):
+    def __init__(self, input_file, output_dir, type, id_field, extra_fields, inaccessible_ids_file):
         self.input_file = input_file
         self.output_dir = output_dir
         self.output_file = join(self.output_dir, type+'.csv')
         self.type = type
         self.extra_fields = extra_fields
+        self.inaccessible_ids_file = inaccessible_ids_file
         self.id_field = id_field
         self.url = commentURL if type == 'comments' else postURL
     def process(self):
@@ -160,6 +161,10 @@ class AddFields():
         existing_ids = {}
         # Do not redownload data for IDs that already exist
         old_df = []
+        inaccessible_ids = set()
+        if isfile(self.inaccessible_ids_file):
+            inaccessible_ids_df = pd.read_csv(self.inaccessible_ids_file)
+            inaccessible_ids = set(inaccessible_ids_df['id'])
         if isfile(self.output_file):
             # Note: ~150 scores are missing from 3-aggregate_all/RC_ file
             #       To backfill this you'd need to
@@ -198,9 +203,10 @@ class AddFields():
 
         ## Remove IDs that are in old_df
         if len(existing_ids):
-            ids = [id for id in ids if id not in existing_ids]
+            ids = [id for id in ids if id not in existing_ids and id not in inaccessible_ids]
         chunks = list(chunk(ids, chunk_size))
         names_not_in_pushshift = set()
+        new_inaccessible_ids = set()
         def addResults(results):
             if len(results):
                 resdf = pd.DataFrame(list(results.values()))
@@ -216,11 +222,15 @@ class AddFields():
             else:
                 requestFunction = lambda: ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
             pushshift_results = loopUntilRequestSucceeds(requestFunction, 'ERROR: Elastic connection failed')
+            found_in_pushshift = set(pushshift_results.keys())
             if self.type == 'posts':
                 ## Only looking up missing post IDs with reddit
                 ## Pointless to look up missing comment IDs there since body text would all be [removed]
-                found = set(pushshift_results.keys())
-                names_not_in_pushshift.update(['t3_'+id for id in ids_chunk if id not in found])
+                names_not_in_pushshift.update(['t3_'+id for id in ids_chunk if id not in found_in_pushshift])
+            else:
+                ## For comments, can update new_inaccessible_ids directly
+                ## For posts, need to wait until after querying reddit
+                new_inaccessible_ids.update([id for id in ids_chunk if id not in found_in_pushshift])
             addResults(pushshift_results)
         lookup_with_reddit_chunks = list(chunk(list(names_not_in_pushshift), 100))
         for names_chunk in tqdm(lookup_with_reddit_chunks):
@@ -230,7 +240,15 @@ class AddFields():
                 row = {'id': hit.id}
                 setFieldsForRow(row, hit, self.extra_fields, False, True)
                 reddit_results_to_add[hit.id] = row
+            ## self.type should always equal 'posts' here.. just being explicit in case something changes
+            if self.type == 'posts':
+                new_inaccessible_ids.update([id[3:] for id in names_chunk if id[3:] not in reddit_results_to_add])
             addResults(reddit_results_to_add)
+        if len(new_inaccessible_ids):
+            new_inaccessible_ids.update(inaccessible_ids)
+            inaccessible_ids_df = pd.DataFrame(new_inaccessible_ids,columns=['id'])
+            inaccessible_ids_df.sort_values('id', inplace=True)
+            inaccessible_ids_df.to_csv(self.inaccessible_ids_file, index=False)
         if len(new_dfs):
             if len(old_df):
                 new_dfs.append(old_df)
