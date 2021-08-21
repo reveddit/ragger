@@ -12,7 +12,7 @@ from logger import log
 from AddFields import AddFields
 
 class Launcher():
-    def __init__(self, configFile, mode='normal', overwrite = False):
+    def __init__(self, configFile, mode='normal', update = False):
         ct = ConfigTyped(configFile, mode)
         opts = ct.opts
         thisDir = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +29,7 @@ class Launcher():
                            opts['add_fields_id_field'],
                            list(map(lambda x: x.strip(), opts['extra_fields_'+type].split(','))),
                            opts['inaccessible_ids_file_'+type],
-                           overwrite,
+                           update,
                           )
             af.process()
         log('finished')
@@ -39,9 +39,9 @@ if __name__ == '__main__':
     ap.add_argument('-m', '--mode', type=str, help="Run mode",
                     default='normal')
     ap.add_argument('-c', '--config', type=str, help="Config file", default='config.ini')
-    ap.add_argument('-w', '--overwrite', action='store_true', default=False, help='Overwrite inaccessible ids files.')
+    ap.add_argument('-u', '--update', action='store_true', default=False, help='Update inaccessible ids files.')
     args = ap.parse_args()
     l = Launcher(args.config,
                  mode=args.mode,
-                 overwrite=args.overwrite,
+                 update=args.update,
                  )

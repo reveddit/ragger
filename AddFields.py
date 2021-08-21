@@ -147,14 +147,14 @@ def loopUntilRequestSucceeds(requestFunction, errorMsg):
 
 
 class AddFields():
-    def __init__(self, input_file, output_dir, type, id_field, extra_fields, inaccessible_ids_file, overwrite_inaccessible_ids_file):
+    def __init__(self, input_file, output_dir, type, id_field, extra_fields, inaccessible_ids_file, update_inaccessible_ids_file):
         self.input_file = input_file
         self.output_dir = output_dir
         self.output_file = join(self.output_dir, type+'.csv')
         self.type = type
         self.extra_fields = extra_fields
         self.inaccessible_ids_file = inaccessible_ids_file
-        self.overwrite_inaccessible_ids_file = overwrite_inaccessible_ids_file
+        self.update_inaccessible_ids_file = update_inaccessible_ids_file
         self.id_field = id_field
         self.url = commentURL if type == 'comments' else postURL
     def process(self):
@@ -245,7 +245,7 @@ class AddFields():
             if self.type == 'posts':
                 new_inaccessible_ids.update([id[3:] for id in names_chunk if id[3:] not in reddit_results_to_add])
             addResults(reddit_results_to_add)
-        if self.overwrite_inaccessible_ids_file and len(new_inaccessible_ids):
+        if self.update_inaccessible_ids_file and len(new_inaccessible_ids):
             new_inaccessible_ids.update(inaccessible_ids)
             inaccessible_ids_df = pd.DataFrame(new_inaccessible_ids,columns=['id'])
             inaccessible_ids_df.sort_values('id', inplace=True)
