@@ -58,7 +58,7 @@ do
       localFileSize=$(stat -c %s "$localpath_base_month")
     fi
     if [[ "$remoteFileSize" && (! -f "$localpath_base_month" || "$remoteFileSize" -ne "$localFileSize") ]] ; then
-      wget --continue --directory-prefix="$outputDir" https://files.pushshift.io/reddit/$thingType/$filename
+      wget --continue --tries=0 --directory-prefix="$outputDir" https://files.pushshift.io/reddit/$thingType/$filename
     fi
   else
     ls $localpath_base_year 2>/dev/null
