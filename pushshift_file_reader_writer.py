@@ -26,29 +26,24 @@ class PushshiftFileProcessor():
             raise Exception('Bad Pushshift file type: ['+type+']')
         self.type = type
         self.max_lines_to_read = max_lines_to_read
-        self.data = []
 
     def transform(self):
         extension = os.path.splitext(self.input_file)[1]
-        if extension == '.bz2':
-            with BZ2File(self.input_file) as infile:
-                self.transform_xz_bz_gz_file(infile)
-        elif extension == '.xz':
-            with lzma.open(self.input_file, 'r') as infile:
-                self.transform_xz_bz_gz_file(infile)
-        elif extension == '.gz':
-            with gzip.open(self.input_file, 'r') as infile:
-                self.transform_xz_bz_gz_file(infile)
-        elif extension == '.zst':
-            with open(self.input_file, 'rb') as infile:
-                self.transform_zst_file(infile)
-        self.write_csv()
-
-    def write_csv(self):
         with open(self.output_file, 'w') as f:
+            self.f = f
             f.write(','.join(columns)+"\n")
-            for item in self.data:
-                f.write(','.join(map(str,item))+"\n")
+            if extension == '.bz2':
+                with BZ2File(self.input_file) as infile:
+                    self.transform_xz_bz_gz_file(infile)
+            elif extension == '.xz':
+                with lzma.open(self.input_file, 'r') as infile:
+                    self.transform_xz_bz_gz_file(infile)
+            elif extension == '.gz':
+                with gzip.open(self.input_file, 'r') as infile:
+                    self.transform_xz_bz_gz_file(infile)
+            elif extension == '.zst':
+                with open(self.input_file, 'rb') as infile:
+                    self.transform_zst_file(infile)
 
     def transform_xz_bz_gz_file(self, infile):
         # 44m24s run time for 104,473,929 comments stored on HD [RC_2018-09.xz, 10GB]
@@ -57,7 +52,7 @@ class PushshiftFileProcessor():
         for i,lines in enumerate(grouper(infile, num_lines_per_read, '')):
             for line in lines:
                 if line.strip():
-                    self.appendData(line, self.type)
+                    self.appendData(line)
                     lines_read += 1
                     if self.max_lines_to_read and lines_read >= self.max_lines_to_read:
                         return
@@ -79,16 +74,16 @@ class PushshiftFileProcessor():
                 for i, line in enumerate(lines[:-1]):
                     if i == 0:
                         line = previous_line + line
-                    self.appendData(line, self.type)
+                    self.appendData(line)
                     lines_read += 1
                     if self.max_lines_to_read and lines_read >= self.max_lines_to_read:
                         return
                 previous_line = lines[-1]
 
-    def appendData(self, line, type):
+    def appendData(self, line):
         x = json.loads(line)
         is_removed = False
-        if type == 'comments':
+        if self.type == 'comments':
             if x['body'].replace('\\','') == '[removed]' and x['author'].replace('\\','') == '[deleted]':
                 is_removed = True
         else:
@@ -100,11 +95,12 @@ class PushshiftFileProcessor():
                     raise BadSubmissionData('missing key is_crosspostable: '+x['id'])
                 elif not x['is_crosspostable']:
                     is_removed = True
+        columns = None
         ## fix for RC_2017-11 and some RS file
         if x['score'] is None:
             x['score'] = 1
         try:
-            self.data.append([x['id'], x['created_utc'], x['subreddit'], x['score'], is_removed])
+            columns = [x['id'], x['created_utc'], x['subreddit'], x['score'], is_removed]
         except:
             ## Below identifies ignorable data and skips over it
             ## If something unexpected is found, raise Exception
@@ -119,3 +115,5 @@ class PushshiftFileProcessor():
             except:
                 pass
             raise Exception('Unexpected key error for id ['+x['id']+']')
+        if columns:
+            self.f.write(','.join(map(str, columns))+"\n")
