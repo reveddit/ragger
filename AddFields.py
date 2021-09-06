@@ -187,7 +187,20 @@ class AddFields():
                 log('ERROR: Fields do not match, move or remove output file before continuing: '+
                     basename(normpath(self.output_dir))+'/'+self.type+'.csv')
                 return
-            existing_ids = dict.fromkeys(old_df.index)
+            if self.type == 'posts':
+                existing_ids = dict.fromkeys(old_df.index)
+            else:
+                ## Mark comments with blank created_utc as a big date so they always get rechecked. There are only 504 blanks
+                non_blank_created_utc = old_df['created_utc'].replace('', '12345678901').map(int)
+                ## 1609257600 = 2020/12/30
+                ##   As of 2021/08, Pushshift now returns [removed] where it once had content for comments. See:
+                        #    2021/08/12 - Many old comments (all?) that once returned a body now don't
+                        #       https://www.reddit.com/r/pushshift/comments/p21ea6/the_new_beta_api_will_be_going_back_up_in_less/h8mpjwg/
+                        #    2021/09/03 - Removed comment bodies older than 24 hours become [removed]
+                        #       https://www.reddit.com/r/pushshift/comments/pgzdav/the_api_now_appears_to_rewrite_nearly_all/
+                ##  Already retrieved data prior to 2020/12/30, so for everything after that that is [removed],
+                ##  don't mark it as existing and keep checking if it exists b/c it might come back later
+                existing_ids = dict.fromkeys(old_df[(non_blank_created_utc < 1609257600) | (old_df['body'] != '[removed]')].index)
         df = pd.read_csv(self.input_file)
         # Verify uniqueness of previous data
         df.set_index(self.id_field,
