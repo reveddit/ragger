@@ -159,7 +159,7 @@ class AddFields():
         self.url = commentURL if type == 'comments' else postURL
     def process(self):
         new_dfs = []
-        existing_ids = {}
+        ids_archived = {}
         # Do not redownload data for IDs that already exist
         old_df = []
         inaccessible_ids = set()
@@ -183,14 +183,16 @@ class AddFields():
             # Make sure extra_fields match in existing data
             old_df_fields = sorted(list(old_df.columns))
             new_df_fields = sorted(self.extra_fields)
+            ids_archived_relookup = dict()
             if old_df_fields != new_df_fields:
                 log('ERROR: Fields do not match, move or remove output file before continuing: '+
                     basename(normpath(self.output_dir))+'/'+self.type+'.csv')
                 return
             if self.type == 'posts':
-                existing_ids = dict.fromkeys(old_df.index)
+                ids_archived = dict.fromkeys(old_df.index)
             else:
-                ## Mark comments with blank created_utc as a big date so they always get rechecked. There are only 504 blanks
+                ## Mark comments with blank created_utc as a big date because created_utc can't be blank in next condition
+                ## With a big date, they always get re-looked up. There are only 504 blanks
                 non_blank_created_utc = old_df['created_utc'].replace('', '12345678901').map(int)
                 ## 1609257600 = 2020/12/30
                 ##   As of 2021/08, Pushshift now returns [removed] where it once had content for comments. See:
@@ -200,7 +202,9 @@ class AddFields():
                         #       https://www.reddit.com/r/pushshift/comments/pgzdav/the_api_now_appears_to_rewrite_nearly_all/
                 ##  Already retrieved data prior to 2020/12/30, so for everything after that that is [removed],
                 ##  don't mark it as existing and keep checking if it exists b/c it might come back later
-                existing_ids = dict.fromkeys(old_df[(non_blank_created_utc < 1609257600) | (old_df['body'] != '[removed]')].index)
+                ids_archived_condition = ((non_blank_created_utc < 1609257600) | (old_df['body'] != '[removed]'))
+                ids_archived = dict.fromkeys(old_df[ids_archived_condition].index)
+                ids_archived_relookup = dict.fromkeys(old_df[~ ids_archived_condition].index)
         df = pd.read_csv(self.input_file)
         # Verify uniqueness of previous data
         df.set_index(self.id_field,
@@ -215,9 +219,11 @@ class AddFields():
             additional_ids = list(comments_df['link_id'])
         ids = list(set(list(df[self.id_field])+additional_ids))
 
-        ## Remove IDs that are in old_df
-        if len(existing_ids):
-            ids = [id for id in ids if id not in existing_ids and id not in inaccessible_ids]
+        ## Remove IDs that we don't want to look up again, i.e. either:
+        ##    - id exists in old_df and isn't a candidate for re-lookup
+        ##    - id is in inaccessible_ids (ids for which pushshift does not have data)
+        if len(ids_archived):
+            ids = [id for id in ids if id not in ids_archived and id not in inaccessible_ids]
         chunks = list(chunk(ids, chunk_size))
         names_not_in_pushshift = set()
         new_inaccessible_ids = set()
@@ -265,7 +271,25 @@ class AddFields():
             inaccessible_ids_df.to_csv(self.inaccessible_ids_file, index=False)
         if len(new_dfs):
             if len(old_df):
-                new_dfs.append(old_df)
+                if self.type == 'posts':
+                    new_dfs.append(old_df)
+                else:
+                    new_df_temp_concat = pd.concat(new_dfs, verify_integrity=True)
+                    suffix = '_ARCHIVED' ## _ARCHIVED means these columns were already stored on disk. Opposite would be _RE_LOOKED_UP
+                    ## Casting as object to avoid adding .0 to the end, making it look like a non-integer to the database
+                    new_df_temp_concat['created_utc'] = new_df_temp_concat['created_utc'].astype(object)
+
+                    ## For data that was already archived as [removed], keep everything from newly looked up data.
+                    ## If something previously archived is no longer returned, keep the old row we already had.
+                    ## Thus, anything previously marked as [removed] is still looked up, and if it later has the body
+                    ## then that will overwrite the [removed] record.
+                    archived_relookup_merged = new_df_temp_concat.join(old_df[~ ids_archived_condition], how='outer', rsuffix=suffix)
+                    ## Copy over data from _ARCHIVED columns where lookup is na
+                    for column in old_df.columns:
+                        archived_relookup_merged[column] = archived_relookup_merged[column].fillna(archived_relookup_merged[column+suffix])
+                    ## Drop _ARCHIVED columns
+                    archived_relookup_merged = archived_relookup_merged.filter(regex='^(?!.*'+suffix+')')
+                    new_dfs = [archived_relookup_merged, old_df[ids_archived_condition]]
             new_df = pd.concat(new_dfs, verify_integrity=True)
             df.rename(columns={'score_of_max_pos_removed_item': 'score'}, inplace=True)
             df.index.rename('id', inplace=True)
