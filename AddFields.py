@@ -243,14 +243,13 @@ class AddFields():
                 requestFunction = lambda: ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
             pushshift_results = loopUntilRequestSucceeds(requestFunction, 'ERROR: Elastic connection failed')
             found_in_pushshift = set(pushshift_results.keys())
-            if self.type == 'posts':
-                ## Only looking up missing post IDs with reddit
-                ## Pointless to look up missing comment IDs there since body text would all be [removed]
-                names_not_in_pushshift.update(['t3_'+id for id in ids_chunk if id not in found_in_pushshift])
-            else:
-                ## For comments, can update new_inaccessible_ids directly
-                ## For posts, need to wait until after querying reddit
-                new_inaccessible_ids.update([id for id in ids_chunk if id not in found_in_pushshift])
+            prefix = 't1_' if self.type == 'comments' else 't3_'
+            ## For data missing from pushshift, look up in reddit
+            ## Now looking up not only posts, but also comments even a [removed] comment has a post w/a title that gives context
+            ## This is possible now b/c of relookup of [removed] items. It wouldn't be good to do this before
+            ## because Pushshift appears to be temporarily returning [removed] for content that used to exist,
+            ## and writing [removed] by looking these up in reddit would have made that permanent without have this adjusted code.
+            names_not_in_pushshift.update([prefix+id for id in ids_chunk if id not in found_in_pushshift])
             addResults(pushshift_results)
         lookup_with_reddit_chunks = list(chunk(list(names_not_in_pushshift), 100))
         for names_chunk in tqdm(lookup_with_reddit_chunks):
@@ -260,9 +259,7 @@ class AddFields():
                 row = {'id': hit.id}
                 setFieldsForRow(row, hit, self.extra_fields, False, True)
                 reddit_results_to_add[hit.id] = row
-            ## self.type should always equal 'posts' here.. just being explicit in case something changes
-            if self.type == 'posts':
-                new_inaccessible_ids.update([id[3:] for id in names_chunk if id[3:] not in reddit_results_to_add])
+            new_inaccessible_ids.update([id[3:] for id in names_chunk if id[3:] not in reddit_results_to_add])
             addResults(reddit_results_to_add)
         if self.update_inaccessible_ids_file and len(new_inaccessible_ids):
             new_inaccessible_ids.update(inaccessible_ids)
