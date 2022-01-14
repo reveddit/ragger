@@ -72,12 +72,28 @@ def generateSQL(columns):
 commentColumnsReturnTypes, commentColumnsSelectSQL = generateSQL(commentColumns)
 postColumnsReturnTypes, postColumnsSelectSQL = generateSQL(postColumns)
 
-commentFromJoinSQL = """
+functionParamSQL = f"""
+    subreddit VARCHAR(30),
+    num_records integer,
+    created_before bigint default NULL,
+    created_after bigint default NULL,
+    rate_less double precision default NULL,
+    rate_more double precision default NULL
+"""
+
+commentFromJoinSQL = f"""
 FROM      aggregate_comments
 LEFT JOIN comments
 ON        aggregate_comments.id_of_max_pos_removed_item = comments.id
 LEFT JOIN posts
 ON        comments.link_id = posts.id
+"""
+
+pagingConditionsSQL = f"""
+    AND ($3 is null OR last_created_utc <= $3) -- created_before $3
+    AND ($4 is null OR last_created_utc >= $4) -- created_after $4
+    AND ($5 is null OR             rate <= $5) -- rate_less $5
+    AND ($6 is null OR             rate >= $6) -- rate_more $6
 """
 
 commentFromJoinWhereSQL = f"""
@@ -86,6 +102,7 @@ WHERE last_id IN
   (SELECT    last_id
       {commentFromJoinSQL}
       WHERE subreddit=$1
+      {pagingConditionsSQL}
 """
 
 postFromJoinSQL = """
@@ -100,6 +117,13 @@ WHERE last_id IN
     (SELECT last_id
     {postFromJoinSQL}
     WHERE subreddit=$1
+    {pagingConditionsSQL}
+"""
+
+endOfFunctionSQL = f"""
+  USING subreddit, num_records, created_before, created_after, rate_less, rate_more;
+END;
+$$ language plpgsql STABLE;
 """
 
 class Launcher():
@@ -177,7 +201,7 @@ DROP TABLE IF EXISTS commentColumnsReturnTypes;
 CREATE TABLE commentColumnsReturnTypes ( {commentColumnsReturnTypes} );
 
 CREATE OR REPLACE function
-  getCommentUpvoteRemovedRatesByRate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF commentColumnsReturnTypes
+  getCommentUpvoteRemovedRatesByRate({functionParamSQL}) RETURNS SETOF commentColumnsReturnTypes
 AS
 $$
 BEGIN
@@ -185,12 +209,10 @@ BEGIN
     {commentFromJoinWhereSQL}
         ORDER BY rate DESC LIMIT $2)
     ORDER BY rate DESC'
-  USING subreddit, num_records;
-END;
-$$ language plpgsql STABLE;
+{endOfFunctionSQL}
 
 CREATE OR REPLACE function
-  getCommentUpvoteRemovedRatesByDate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF commentColumnsReturnTypes
+  getCommentUpvoteRemovedRatesByDate({functionParamSQL}) RETURNS SETOF commentColumnsReturnTypes
 AS
 $$
 BEGIN
@@ -198,9 +220,7 @@ BEGIN
     {commentFromJoinWhereSQL}
         ORDER BY last_created_utc DESC LIMIT $2)
     ORDER BY last_created_utc DESC'
-  USING subreddit, num_records;
-END;
-$$ language plpgsql STABLE;
+{endOfFunctionSQL}
 
 DROP FUNCTION IF EXISTS getPostUpvoteRemovedRatesByRate;
 DROP FUNCTION IF EXISTS getPostUpvoteRemovedRatesByDate;
@@ -209,7 +229,7 @@ DROP TABLE IF EXISTS postColumnsReturnTypes;
 CREATE TABLE postColumnsReturnTypes ( {postColumnsReturnTypes} );
 
 CREATE OR REPLACE function
-  getPostUpvoteRemovedRatesByRate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF postColumnsReturnTypes
+  getPostUpvoteRemovedRatesByRate({functionParamSQL}) RETURNS SETOF postColumnsReturnTypes
 AS
 $$
 BEGIN
@@ -217,12 +237,10 @@ BEGIN
     {postFromJoinWhereSQL}
         ORDER BY rate DESC LIMIT $2)
     ORDER BY rate DESC'
-  USING subreddit, num_records;
-END;
-$$ language plpgsql STABLE;
+{endOfFunctionSQL}
 
 CREATE OR REPLACE function
-  getPostUpvoteRemovedRatesByDate(subreddit VARCHAR(30), num_records integer) RETURNS SETOF postColumnsReturnTypes
+  getPostUpvoteRemovedRatesByDate({functionParamSQL}) RETURNS SETOF postColumnsReturnTypes
 AS
 $$
 BEGIN
@@ -230,9 +248,7 @@ BEGIN
     {postFromJoinWhereSQL}
         ORDER BY last_created_utc DESC LIMIT $2)
     ORDER BY last_created_utc DESC'
-  USING subreddit, num_records;
-END;
-$$ language plpgsql STABLE;
+{endOfFunctionSQL}
 
 UPDATE pg_language SET lanvalidator = 2247 WHERE lanname = 'c';
 
