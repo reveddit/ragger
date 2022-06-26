@@ -7,7 +7,7 @@ import re
 from ConfigTyped import ConfigTyped
 from pushshift_file_reader_writer import PushshiftFileProcessor
 from files_log import FilesLog, RemoteFileSizes
-from exceptions import BadSubmissionData
+from exceptions import BadSubmissionData, UnexpectedCompressionFormat
 from logger import log
 
 class Launcher():
@@ -60,6 +60,9 @@ class Launcher():
                     except BadSubmissionData:
                         upl.add_entry(basename)
                         log(basename+' marked as unprocessable')
+                        continue
+                    except UnexpectedCompressionFormat as e:
+                        log(basename+' ' + str(e))
                         continue
         log('finished')
 

@@ -3,3 +3,7 @@ class RaggerException(Exception):
 
 class BadSubmissionData(RaggerException):
     """Exception indicates submission data is not complete for at least one entry."""
+
+
+class UnexpectedCompressionFormat(RaggerException):
+    """Exception indicates compressed data is in an unexpected format."""

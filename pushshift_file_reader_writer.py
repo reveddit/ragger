@@ -8,7 +8,7 @@ import os.path
 import os
 import re
 
-from exceptions import BadSubmissionData
+from exceptions import BadSubmissionData, UnexpectedCompressionFormat
 from logger import log
 
 columns = ['id', 'created_utc', 'subreddit', 'score', 'is_removed']
@@ -29,21 +29,26 @@ class PushshiftFileProcessor():
 
     def transform(self):
         extension = os.path.splitext(self.input_file)[1]
-        with open(self.output_file, 'w') as f:
-            self.f = f
-            f.write(','.join(columns)+"\n")
-            if extension == '.bz2':
-                with BZ2File(self.input_file) as infile:
-                    self.transform_xz_bz_gz_file(infile)
-            elif extension == '.xz':
-                with lzma.open(self.input_file, 'r') as infile:
-                    self.transform_xz_bz_gz_file(infile)
-            elif extension == '.gz':
-                with gzip.open(self.input_file, 'r') as infile:
-                    self.transform_xz_bz_gz_file(infile)
-            elif extension == '.zst':
-                with open(self.input_file, 'rb') as infile:
-                    self.transform_zst_file(infile)
+        try:
+            with open(self.output_file, 'w') as f:
+                self.f = f
+                f.write(','.join(columns)+"\n")
+                if extension == '.bz2':
+                    with BZ2File(self.input_file) as infile:
+                        self.transform_xz_bz_gz_file(infile)
+                elif extension == '.xz':
+                    with lzma.open(self.input_file, 'r') as infile:
+                        self.transform_xz_bz_gz_file(infile)
+                elif extension == '.gz':
+                    with gzip.open(self.input_file, 'r') as infile:
+                        self.transform_xz_bz_gz_file(infile)
+                elif extension == '.zst':
+                    with open(self.input_file, 'rb') as infile:
+                        self.transform_zst_file(infile)
+        except UnexpectedCompressionFormat as e:
+            if os.path.exists(self.output_file):
+                os.remove(self.output_file)
+            raise UnexpectedCompressionFormat(e)
 
     def transform_xz_bz_gz_file(self, infile):
         # 44m24s run time for 104,473,929 comments stored on HD [RC_2018-09.xz, 10GB]
@@ -69,7 +74,10 @@ class PushshiftFileProcessor():
                 chunk = reader.read(zst_num_bytes)
                 if not chunk:
                     break
-                string_data = chunk.decode('utf-8')
+                try:
+                    string_data = chunk.decode('utf-8')
+                except Exception as e:
+                    raise UnexpectedCompressionFormat('unexpected compression format: '+str(e))
                 lines = string_data.split("\n")
                 for i, line in enumerate(lines[:-1]):
                     if i == 0:
