@@ -55,15 +55,29 @@ class Launcher():
                                                  output_file,
                                                  type,
                                                  opts['max_lines_to_read'])
-                    try:
-                        pfp.transform()
-                    except BadSubmissionData:
-                        upl.add_entry(basename)
-                        log(basename+' marked as unprocessable')
+                    def pfp_transform():
+                        success = True
+                        try_alternate_encoding = False
+                        try:
+                            pfp.transform()
+                        except BadSubmissionData:
+                            upl.add_entry(basename)
+                            log(basename+' marked as unprocessable')
+                            success = False
+                        except UnexpectedCompressionFormat as e:
+                            log(basename+' ' + str(e))
+                            success = False
+                            try_alternate_encoding = True
+                        return [success, try_alternate_encoding]
+                    success, try_alternate_encoding = pfp_transform()
+                    if try_alternate_encoding:
+                        log(basename+' trying with iso-8859-1')
+                        pfp.set_encoding('iso-8859-1')
+                        success, _ = pfp_transform()
+                    if not success:
                         continue
-                    except UnexpectedCompressionFormat as e:
-                        log(basename+' ' + str(e))
-                        continue
+                        # This continue is not necessary since there is no code after this.
+                        # It is here in case that changes in the future
         log('finished')
 
 if __name__ == '__main__':

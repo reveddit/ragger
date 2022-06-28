@@ -19,14 +19,16 @@ def grouper(iterable, n, fillvalue=None):
 
 
 class PushshiftFileProcessor():
-    def __init__(self, input_file, output_file, type, max_lines_to_read=0):
+    def __init__(self, input_file, output_file, type, max_lines_to_read=0, encoding='utf-8'):
         self.input_file = input_file
         self.output_file = output_file
         if type not in ['comments', 'posts']:
             raise Exception('Bad Pushshift file type: ['+type+']')
         self.type = type
         self.max_lines_to_read = max_lines_to_read
-
+        self.encoding = encoding
+    def set_encoding(self, encoding):
+        self.encoding = encoding
     def transform(self):
         extension = os.path.splitext(self.input_file)[1]
         try:
@@ -75,7 +77,7 @@ class PushshiftFileProcessor():
                 if not chunk:
                     break
                 try:
-                    string_data = chunk.decode('utf-8')
+                    string_data = chunk.decode(self.encoding)
                 except Exception as e:
                     raise UnexpectedCompressionFormat('unexpected compression format: '+str(e))
                 lines = string_data.split("\n")
