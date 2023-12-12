@@ -241,7 +241,9 @@ class AddFields():
                 requestFunction = lambda: ps_es_queryByID(ELASTIC_TYPE_TO_INDEX[self.type], ids_chunk, self.extra_fields)
             else:
                 requestFunction = lambda: ps_api_queryByID(self.url, ids_chunk, self.extra_fields)
-            pushshift_results = loopUntilRequestSucceeds(requestFunction, 'ERROR: Elastic connection failed')
+            # pushshift_results = loopUntilRequestSucceeds(requestFunction, 'ERROR: Elastic connection failed')
+            # Pushshift no longer accessible
+            pushshift_results = {}
             found_in_pushshift = set(pushshift_results.keys())
             prefix = 't1_' if self.type == 'comments' else 't3_'
             ## For data missing from pushshift, look up in reddit
